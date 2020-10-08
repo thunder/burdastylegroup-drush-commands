@@ -1,6 +1,6 @@
 <?php
 
-namespace Drush\Commands\Backend;
+namespace Drush\Commands\burdastyle_drush_commands
 
 use Consolidation\AnnotatedCommand\AnnotationData;
 use Consolidation\AnnotatedCommand\CommandData;
