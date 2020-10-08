@@ -1,0 +1,15 @@
+{
+  "name": "thunder/burdastylegroup-drush-commands",
+  "description": "Drush commands for the BurdaStyleGrout Thunder installation.",
+  "type": "drupal-drush",
+  "require": {
+    "drush/drush": "~9||~10"
+  },
+  "license": "GPL-2.0-or-later",
+  "authors": [
+    {
+      "name": "Daniel Bosen",
+      "email": "daniel.bosen@burda.com"
+    }
+  ]
+}
