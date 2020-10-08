@@ -1,6 +1,6 @@
 <?php
 
-namespace Drush\Commands\burdastyle_drush_commands;
+namespace Drush\Commands\burdastylegroup_drush_commands;
 
 use Consolidation\AnnotatedCommand\CommandData;
 use Symfony\Component\Filesystem\Filesystem;
