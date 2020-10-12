@@ -1,9 +1,11 @@
 <?php
 
-namespace Drush\Commands\burdastylegroup_drush_commands;
+namespace Drush\Commands\BurdaStyleGroup;
 
 use Consolidation\AnnotatedCommand\CommandData;
 use Symfony\Component\Filesystem\Filesystem;
+
+include "AbstractBackendCommandsBase.php";
 
 /**
  * Backend drush commands.
