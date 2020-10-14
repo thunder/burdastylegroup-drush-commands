@@ -187,17 +187,32 @@ class BackendCommands extends AbstractBackendCommandsBase
         // into --uri=http://domain.site, which we do not handle in code.
         foreach ($aliases as $alias) {
             // Install from config.
-            $this->process(['drush', $alias, 'backend:install'], $this->projectDirectory());
+            $this->process(['drush', $alias, 'backend:install', $this->getOptionsString()], $this->projectDirectory());
         }
 
         // Update codebase and translation files
-        $this->process(['drush', 'backend:update-code'], $this->projectDirectory());
+        $this->process(['drush', 'backend:update-code', $this->getOptionsString()], $this->projectDirectory());
 
         // Update database and export config for all sites.
         foreach ($aliases as $alias) {
-            $this->process(['drush', $alias, 'backend:update-database'], $this->projectDirectory());
-            $this->process(['drush', $alias, 'backend:config-export'], $this->projectDirectory());
+            $this->process(['drush', $alias, 'backend:update-database', $this->getOptionsString()], $this->projectDirectory());
+            $this->process(['drush', $alias, 'backend:config-export', $this->getOptionsString()], $this->projectDirectory());
         }
+    }
+
+    /**
+     * Gets an options string from the input options.
+     *
+     * @return string
+     */
+    protected function getOptionsString() {
+      $string = '';
+      foreach ($this->input()->getOptions() as $key => $value) {
+        if (!empty($value) && $key !== 'root') {
+          $string.= '--' . $key . '=' . $value . ' ';
+        }
+      }
+      return trim($string);
     }
 
     /**
