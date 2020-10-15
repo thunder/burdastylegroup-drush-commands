@@ -3,15 +3,18 @@
 namespace Drush\Commands\BurdaStyleGroup;
 
 use Consolidation\AnnotatedCommand\CommandData;
+use Drush\Commands\DrushCommands;
+use Drush\SiteAlias\SiteAliasManagerAwareInterface;
 use Symfony\Component\Filesystem\Filesystem;
 
-include "AbstractBackendCommandsBase.php";
+include "BackendCommandsTrait.php";
 
 /**
  * Backend drush commands.
  */
-class BackendCommands extends AbstractBackendCommandsBase
+class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInterface
 {
+    use BackendCommandsTrait;
 
     /**
      * @var \Symfony\Component\Filesystem\Filesystem
@@ -81,7 +84,7 @@ class BackendCommands extends AbstractBackendCommandsBase
      */
     public function postInstallCommand($result, CommandData $commandData)
     {
-        // Remove the patch
+        // Remove the patch.
         $this->corePatches($revert = true);
 
         // Cleanup config sync directory we filled up before and revert changes made by site-install

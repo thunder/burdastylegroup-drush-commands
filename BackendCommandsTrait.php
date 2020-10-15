@@ -6,17 +6,19 @@ use Consolidation\AnnotatedCommand\AnnotationData;
 use Consolidation\AnnotatedCommand\CommandData;
 use Consolidation\AnnotatedCommand\CommandError;
 use Consolidation\SiteAlias\SiteAliasInterface;
-use Consolidation\SiteAlias\SiteAliasManagerAwareInterface;
 use Consolidation\SiteAlias\SiteAliasManagerAwareTrait;
+use Drupal\Core\Config\ConfigManagerInterface;
+use Drupal\Core\Config\StorageInterface;
 use Drush\Commands\DrushCommands;
+use Drush\Drupal\Commands\config\ConfigCommands;
+use Drush\Drush;
 use Symfony\Component\Console\Input\InputInterface;
 
 /**
  * Base class for backend drush commands.
  */
-abstract class AbstractBackendCommandsBase extends DrushCommands implements SiteAliasManagerAwareInterface
+trait BackendCommandsTrait
 {
-
     use SiteAliasManagerAwareTrait;
 
     /**
@@ -56,7 +58,8 @@ abstract class AbstractBackendCommandsBase extends DrushCommands implements Site
     public function initCommands(InputInterface $input, AnnotationData $annotationData)
     {
         // Initialize project directory.
-        $this->projectDirectory = $input->getOption('project-directory') ?: Drush::bootstrapManager()->getComposerRoot();;
+        $this->projectDirectory = $input->getOption('project-directory') ?: Drush::bootstrapManager()->getComposerRoot();
+        ;
         $this->forceProduction = (bool) $input->getOption('force-production');
     }
 
@@ -85,12 +88,12 @@ abstract class AbstractBackendCommandsBase extends DrushCommands implements Site
      *
      * @hook option @options-backend
      *
-     * @option project-directory The base directory of the project. Defaults to '/var/www/html'.
+     * @option project-directory The base directory of the project. Defaults to composer root of project .
      * @option force-production The installation is forced to be without the local config. Defaults to false.
      *
      * @param array $options
      */
-    public function optionsBackend($options = ['project-directory' => '/var/www/html', 'force-production' => false])
+    public function optionsBackend($options = ['project-directory' => false, 'force-production' => false])
     {
     }
 
