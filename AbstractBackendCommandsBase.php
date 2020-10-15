@@ -56,7 +56,7 @@ abstract class AbstractBackendCommandsBase extends DrushCommands implements Site
     public function initCommands(InputInterface $input, AnnotationData $annotationData)
     {
         // Initialize project directory.
-        $this->projectDirectory = $input->getOption('project-directory');
+        $this->projectDirectory = $input->getOption('project-directory') ?: Drush::bootstrapManager()->getComposerRoot();;
         $this->forceProduction = (bool) $input->getOption('force-production');
     }
 
