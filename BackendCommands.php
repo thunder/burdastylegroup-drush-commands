@@ -156,8 +156,9 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         }
 
         // Move config into shared and site specific folders.
+        // @todo Fix sync-config.sh expecting relative path.
         $this->process(
-            ['scripts/sync-config.sh', $this->siteConfigDirectory().'/export'],
+            ['scripts/sync-config.sh', 'config/'.$this->siteDomainDirectory().'/export'],
             $this->projectDirectory()
         );
     }

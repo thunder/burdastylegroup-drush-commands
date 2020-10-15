@@ -15,7 +15,7 @@ use Drush\Drush;
 use Symfony\Component\Console\Input\InputInterface;
 
 /**
- * Base class for backend drush commands.
+ * Trait for backend drush commands.
  */
 trait BackendCommandsTrait
 {
