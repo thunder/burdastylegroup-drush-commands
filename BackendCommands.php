@@ -5,6 +5,7 @@ namespace Drush\Commands\BurdaStyleGroup;
 use Consolidation\AnnotatedCommand\CommandData;
 use Drush\Commands\DrushCommands;
 use Drush\SiteAlias\SiteAliasManagerAwareInterface;
+use Drush\Sql\SqlBase;
 use Symfony\Component\Filesystem\Filesystem;
 
 include "BackendCommandsTrait.php";
@@ -63,6 +64,8 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      *
      * @usage drush @elle backend:install-site
      *   Installs elle project from config.
+     * @bootstrap root
+     * @kernel installer
      */
     public function install()
     {
@@ -205,18 +208,47 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     }
 
     /**
+     * Creates a php dump for phpunit test script.
+     *
+     * @command backend:create-testing-dump
+     *
+     * @aliases backend:dump
+     *
+     * @options-backend
+     *
+     * @usage drush @elle backend:create-testing-dump
+     *   Creates a phpunit testing dump for the site elle.
+     * @bootstrap configuration
+     */
+    public function createTestDump()
+    {
+        if ($this->selfRecord()->name() === '@self') {
+            $aliases = $this->supportedAliases();
+        } else {
+            $aliases = [$this->selfRecord()->name()];
+        }
+
+        $sql = SqlBase::create();
+        $dbSpec = $sql->getDbSpec();
+
+        // php core/scripts/db-tools.php dump-database-d8-mysql --database-url mysql://thunder:thunder@localhost:3306/instyle > project.php
+        $this->process(['php', 'core/scripts/db-tools.php','dump-database-d8-mysql'], $this->projectDirectory() . '/docroot');
+    }
+
+    /**
      * Gets an options string from the input options.
      *
      * @return string
      */
-    protected function getOptionsString() {
-      $string = '';
-      foreach ($this->input()->getOptions() as $key => $value) {
-        if (!empty($value) && $key !== 'root') {
-          $string.= '--' . $key . '=' . $value . ' ';
+    protected function getOptionsString()
+    {
+        $string = '';
+        foreach ($this->input()->getOptions() as $key => $value) {
+            if (!empty($value) && $key !== 'root') {
+                $string.= '--' . $key . '=' . $value . ' ';
+            }
         }
-      }
-      return trim($string);
+        return trim($string);
     }
 
     /**
