@@ -208,7 +208,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     }
 
     /**
-     * Creates a php dump for phpunit test script.
+     * Creates a phpunit database generation script.
      *
      * @command backend:create-testing-dump
      *
@@ -217,10 +217,10 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      * @options-backend
      *
      * @usage drush @elle backend:create-testing-dump
-     *   Creates a phpunit testing dump for the site elle.
+     *   Creates a phpunit database generation script for the site elle.
      * @bootstrap configuration
      */
-    public function createTestDump()
+    public function createTestingDump()
     {
         if ($this->selfRecord()->name() === '@self') {
             $aliases = $this->supportedAliases();
@@ -230,9 +230,9 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
 
         $sql = SqlBase::create();
         $dbSpec = $sql->getDbSpec();
+        $db_url =$dbSpec['driver'] .'://'.$dbSpec['username'].':'.$dbSpec['password'].'@'.$dbSpec['host'].':'.$dbSpec['port'].'/'. $dbSpec['database'];
 
-        // php core/scripts/db-tools.php dump-database-d8-mysql --database-url mysql://thunder:thunder@localhost:3306/instyle > project.php
-        $this->process(['php', 'core/scripts/db-tools.php','dump-database-d8-mysql'], $this->projectDirectory() . '/docroot');
+        $this->process(['php', 'core/scripts/db-tools.php', 'dump-database-d8-mysql', '--database-url', $db_url], $this->projectDirectory() .'/docroot');
     }
 
     /**
