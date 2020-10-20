@@ -3,16 +3,13 @@
 namespace Drush\Commands\BurdaStyleGroup;
 
 use Consolidation\AnnotatedCommand\AnnotationData;
-use Consolidation\AnnotatedCommand\CommandData;
 use Consolidation\AnnotatedCommand\CommandError;
 use Consolidation\SiteAlias\SiteAliasInterface;
 use Consolidation\SiteAlias\SiteAliasManagerAwareTrait;
-use Drupal\Core\Config\ConfigManagerInterface;
-use Drupal\Core\Config\StorageInterface;
-use Drush\Commands\DrushCommands;
-use Drush\Drupal\Commands\config\ConfigCommands;
+use Drupal\Core\Site\Settings;
 use Drush\Drush;
 use Symfony\Component\Console\Input\InputInterface;
+use Webmozart\PathUtil\Path;
 
 /**
  * Trait for backend drush commands.
@@ -40,11 +37,6 @@ trait BackendCommandsTrait
     private $projectDirectory;
 
     /**
-     * @var string
-     */
-    private $siteDomainDirectory;
-
-    /**
      * @var bool
      */
     private $forceProduction;
@@ -59,28 +51,7 @@ trait BackendCommandsTrait
     {
         // Initialize project directory.
         $this->projectDirectory = $input->getOption('project-directory') ?: Drush::bootstrapManager()->getComposerRoot();
-        ;
         $this->forceProduction = (bool) $input->getOption('force-production');
-    }
-
-    /**
-     * Validate, that the given site alias is supported by this drush command.
-     *
-     * @hook validate @validate-site-alias
-     *
-     * @param  \Consolidation\AnnotatedCommand\CommandData $commandData
-     *
-     * @return \Consolidation\AnnotatedCommand\CommandError|null
-     */
-    public function validateSite(CommandData $commandData)
-    {
-        $aliasName = $this->selfRecord()->name();
-
-        if (!in_array($aliasName, $this->supportedAliases())) {
-            $msg = dt('Site !name does not exist, or is not supported.', ['!name' => $aliasName]);
-
-            return new CommandError($msg);
-        }
     }
 
     /**
@@ -152,23 +123,37 @@ trait BackendCommandsTrait
     }
 
     /**
-     * The site directory for a given site.
+     * The drupal root directory for a given site.
      *
+     * @return string
+     */
+    protected function drupalRootDirectory()
+    {
+        return $this->projectDirectory() .'/docroot';
+    }
+
+    /**
+     * The site directory for a given site.
+     * @see SiteInstallCommands::getSitesSubdirFromUri().
      * @return string
      */
     protected function siteDirectory(): string
     {
-        return $this->projectDirectory().'/docroot/sites/'.$this->siteDomainDirectory();
-    }
+        $uri = preg_replace('#^https?://#', '', $this->selfRecord()->get('uri'));
+        $sites_file = $this->drupalRootDirectory() . '/sites/sites.php';
+        if (file_exists($sites_file)) {
+            include $sites_file;
+            /** @var array $sites */
+            if (isset($sites) && array_key_exists($uri, $sites)) {
+                return Path::join($this->drupalRootDirectory(), 'sites', $sites[$uri]);
+            }
+        }
+        // Fall back to default directory if it exists.
+        if (file_exists(Path::join($this->drupalRootDirectory(), 'sites', 'default'))) {
+            return 'default';
+        }
 
-    /**
-     * The directory, where the shared configuration is placed.
-     *
-     * @return string
-     */
-    protected function sharedConfigDirectory(): string
-    {
-        return $this->projectDirectory().'/config/shared';
+        return false;
     }
 
     /**
@@ -176,11 +161,10 @@ trait BackendCommandsTrait
      *
      * @return string
      */
-    protected function siteConfigDirectory(): string
+    protected function siteConfigSyncDirectory(): string
     {
-        return $this->projectDirectory().'/config/'.$this->siteDomainDirectory();
+        return $this->drupalRootDirectory().'/'.Settings::get('config_sync_directory', false);
     }
-
     /**
      * @return bool
      */
@@ -207,19 +191,5 @@ trait BackendCommandsTrait
     protected function supportedAliases()
     {
         return array_keys($this->siteDomainDirectoryMapping);
-    }
-
-    /**
-     * @return string
-     */
-    private function siteDomainDirectory(): string
-    {
-        if (isset($this->siteDomainDirectory)) {
-            return $this->siteDomainDirectory;
-        }
-
-        $this->siteDomainDirectory = $this->siteDomainDirectoryMapping[$this->selfRecord()->name()];
-
-        return $this->siteDomainDirectory;
     }
 }

@@ -44,7 +44,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
 
         if ($this->forceProduction()) {
             // Remove local config to prevent pollution of export with development values caused by nimbus.
-            $this->filesystem->remove($this->siteConfigDirectory().'/local');
+            $this->filesystem->remove($this->siteConfigSyncDirectory().'/../local');
         }
 
         // Apply core patches
@@ -64,7 +64,9 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      *
      * @usage drush @elle backend:install-site
      *   Installs elle project from config.
-     * @bootstrap root
+     *
+     * @bootstrap config
+     *
      * @kernel installer
      */
     public function install()
@@ -91,11 +93,11 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         $this->corePatches($revert = true);
 
         // Cleanup config sync directory we filled up before and revert changes made by site-install
-        $this->process(['git', 'clean', '--force', '--quiet', '.'], $this->siteConfigDirectory().'/sync');
+        $this->process(['git', 'clean', '--force', '--quiet', '.'], $this->siteConfigSyncDirectory());
         $this->process(['git', 'checkout', $this->siteDirectory().'/settings.php'], $this->projectDirectory());
 
         if ($this->forceProduction()) {
-            $this->process(['git', 'checkout', $this->siteConfigDirectory().'/local']);
+            $this->process(['git', 'checkout', $this->siteConfigSyncDirectory().'/../local']);
         }
     }
 
@@ -147,6 +149,8 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      *
      * @usage drush @elle backend:export-config
      *   Exports the elle configuration.
+     *
+     * @bootstrap config
      */
     public function configExport()
     {
@@ -155,13 +159,13 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
 
         if ($this->forceProduction()) {
             // Nimbus will overwrite local config files with the production values.
-            $this->process(['git', 'checkout', $this->siteConfigDirectory().'/local']);
+            $this->process(['git', 'checkout', $this->siteConfigSyncDirectory().'/../local']);
         }
 
         // Move config into shared and site specific folders.
         // @todo Fix sync-config.sh expecting relative path.
         $this->process(
-            ['scripts/sync-config.sh', 'config/'.$this->siteDomainDirectory().'/export'],
+            ['scripts/sync-config.sh', $this->siteConfigSyncDirectory().'/../export'],
             $this->projectDirectory()
         );
     }
@@ -218,21 +222,16 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      *
      * @usage drush @elle backend:create-testing-dump
      *   Creates a phpunit database generation script for the site elle.
-     * @bootstrap configuration
+     *
+     * @bootstrap config
      */
     public function createTestingDump()
     {
-        if ($this->selfRecord()->name() === '@self') {
-            $aliases = $this->supportedAliases();
-        } else {
-            $aliases = [$this->selfRecord()->name()];
-        }
-
         $sql = SqlBase::create();
         $dbSpec = $sql->getDbSpec();
         $db_url =$dbSpec['driver'] .'://'.$dbSpec['username'].':'.$dbSpec['password'].'@'.$dbSpec['host'].':'.$dbSpec['port'].'/'. $dbSpec['database'];
 
-        $this->process(['php', 'core/scripts/db-tools.php', 'dump-database-d8-mysql', '--database-url', $db_url], $this->projectDirectory() .'/docroot');
+        $this->process(['php', 'core/scripts/db-tools.php', 'dump-database-d8-mysql', '--database-url', $db_url], $this->drupalRootDirectory());
     }
 
     /**
@@ -263,14 +262,14 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         // First copy shared config into config/{site}/sync, then overwrite this
         // with files from config/{site}/override.
         $this->filesystem->mirror(
-            $this->sharedConfigDirectory(),
-            $this->siteConfigDirectory().'/sync',
+            $this->siteConfigSyncDirectory().'/../../shared',
+            $this->siteConfigSyncDirectory(),
             null,
             ['override' => true]
         );
         $this->filesystem->mirror(
-            $this->siteConfigDirectory().'/override',
-            $this->siteConfigDirectory().'/sync',
+            $this->siteConfigSyncDirectory().'/../override',
+            $this->siteConfigSyncDirectory(),
             null,
             ['override' => true]
         );
@@ -297,7 +296,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
 
         foreach ($patches as $patch) {
             $stream = fopen($patch, 'r');
-            $this->process($command, $this->projectDirectory().'/docroot', null, $stream);
+            $this->process($command, $this->drupalRootDirectory(), null, $stream);
             fclose($stream);
         }
     }
