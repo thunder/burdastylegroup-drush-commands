@@ -243,7 +243,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     {
         $string = '';
         foreach ($this->input()->getOptions() as $key => $value) {
-            if (!empty($value) && $key !== 'root') {
+            if (!empty($value) && 'root' !== $key) {
                 $string .= '--'.$key.'='.$value.' ';
             }
         }
