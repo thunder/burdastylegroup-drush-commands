@@ -2,6 +2,7 @@
 <ruleset name="drush">
     <description>Default PHP CodeSniffer configuration for Drush commands.</description>
     <rule ref="Symfony"/>
+    <file>.</file>
     <exclude-pattern>vendor</exclude-pattern>
     <arg value="sp"/>
     <arg name="extensions" value="php" />
