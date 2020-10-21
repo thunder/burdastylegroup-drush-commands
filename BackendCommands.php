@@ -229,9 +229,9 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     {
         $sql = SqlBase::create();
         $dbSpec = $sql->getDbSpec();
-        $db_url =$dbSpec['driver'] .'://'.$dbSpec['username'].':'.$dbSpec['password'].'@'.$dbSpec['host'].':'.$dbSpec['port'].'/'. $dbSpec['database'];
+        $dbUrl = $dbSpec['driver'].'://'.$dbSpec['username'].':'.$dbSpec['password'].'@'.$dbSpec['host'].':'.$dbSpec['port'].'/'.$dbSpec['database'];
 
-        $this->process(['php', 'core/scripts/db-tools.php', 'dump-database-d8-mysql', '--database-url', $db_url], $this->drupalRootDirectory());
+        $this->process(['php', 'core/scripts/db-tools.php', 'dump-database-d8-mysql', '--database-url', $dbUrl], $this->drupalRootDirectory());
     }
 
     /**
@@ -244,9 +244,10 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         $string = '';
         foreach ($this->input()->getOptions() as $key => $value) {
             if (!empty($value) && $key !== 'root') {
-                $string.= '--' . $key . '=' . $value . ' ';
+                $string .= '--'.$key.'='.$value.' ';
             }
         }
+
         return trim($string);
     }
 

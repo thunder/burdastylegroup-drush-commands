@@ -129,20 +129,21 @@ trait BackendCommandsTrait
      */
     protected function drupalRootDirectory()
     {
-        return $this->projectDirectory() .'/docroot';
+        return $this->projectDirectory().'/docroot';
     }
 
     /**
      * The site directory for a given site.
      * @see SiteInstallCommands::getSitesSubdirFromUri().
+     *
      * @return string
      */
     protected function siteDirectory(): string
     {
         $uri = preg_replace('#^https?://#', '', $this->selfRecord()->get('uri'));
-        $sites_file = $this->drupalRootDirectory() . '/sites/sites.php';
-        if (file_exists($sites_file)) {
-            include $sites_file;
+        $sitesFile = $this->drupalRootDirectory().'/sites/sites.php';
+        if (file_exists($sitesFile)) {
+            include $sitesFile;
             /** @var array $sites */
             if (isset($sites) && array_key_exists($uri, $sites)) {
                 return Path::join($this->drupalRootDirectory(), 'sites', $sites[$uri]);
