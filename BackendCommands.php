@@ -274,6 +274,12 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
             null,
             ['override' => true]
         );
+        $this->filesystem->mirror(
+            $this->siteConfigSyncDirectory().'/../testing',
+            $this->siteConfigSyncDirectory(),
+            null,
+            ['override' => true]
+        );
     }
 
     /**
