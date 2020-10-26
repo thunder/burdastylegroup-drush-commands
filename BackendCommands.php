@@ -265,13 +265,13 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         // First copy shared config into config/{site}/sync, then overwrite this
         // with files from config/{site}/override.
         $this->filesystem->mirror(
-            $this->siteConfigSyncDirectory() . '/../../shared',
+            $this->siteConfigSyncDirectory().'/../../shared',
             $this->siteConfigSyncDirectory(),
             null,
             ['override' => true]
         );
         $this->filesystem->mirror(
-            $this->siteConfigSyncDirectory() . '/../override',
+            $this->siteConfigSyncDirectory().'/../override',
             $this->siteConfigSyncDirectory(),
             null,
             ['override' => true]
@@ -279,7 +279,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
 
         if ($this->environment === 'testing') {
             $this->filesystem->mirror(
-                $this->siteConfigSyncDirectory() . '/../testing',
+                $this->siteConfigSyncDirectory().'/../testing',
                 $this->siteConfigSyncDirectory(),
                 null,
                 ['override' => true]
