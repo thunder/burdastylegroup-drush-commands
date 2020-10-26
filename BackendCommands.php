@@ -42,7 +42,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     {
         $this->populateConfigSyncDirectory();
 
-        if ($this->forceProduction()) {
+        if ($this->environment !== 'local') {
             // Remove local config to prevent pollution of export with development values caused by nimbus.
             $this->filesystem->remove($this->siteConfigSyncDirectory().'/../local');
         }
@@ -94,9 +94,11 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
 
         // Cleanup config sync directory we filled up before and revert changes made by site-install
         $this->process(['git', 'clean', '--force', '--quiet', '.'], $this->siteConfigSyncDirectory());
+        $this->process(['git', 'checkout', '.'], $this->siteConfigSyncDirectory());
+
         $this->process(['git', 'checkout', $this->siteDirectory().'/settings.php'], $this->projectDirectory());
 
-        if ($this->forceProduction()) {
+        if ($this->environment !== 'local') {
             $this->process(['git', 'checkout', $this->siteConfigSyncDirectory().'/../local']);
         }
     }
@@ -157,7 +159,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         // export the config into the export folder.
         $this->drush($this->selfRecord(), 'config:export', [], ['yes' => true]);
 
-        if ($this->forceProduction()) {
+        if ($this->environment !== 'local') {
             // Nimbus will overwrite local config files with the production values.
             $this->process(['git', 'checkout', $this->siteConfigSyncDirectory().'/../local']);
         }
@@ -263,23 +265,26 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         // First copy shared config into config/{site}/sync, then overwrite this
         // with files from config/{site}/override.
         $this->filesystem->mirror(
-            $this->siteConfigSyncDirectory().'/../../shared',
+            $this->siteConfigSyncDirectory() . '/../../shared',
             $this->siteConfigSyncDirectory(),
             null,
             ['override' => true]
         );
         $this->filesystem->mirror(
-            $this->siteConfigSyncDirectory().'/../override',
+            $this->siteConfigSyncDirectory() . '/../override',
             $this->siteConfigSyncDirectory(),
             null,
             ['override' => true]
         );
-        $this->filesystem->mirror(
-            $this->siteConfigSyncDirectory().'/../testing',
-            $this->siteConfigSyncDirectory(),
-            null,
-            ['override' => true]
-        );
+
+        if ($this->environment === 'testing') {
+            $this->filesystem->mirror(
+                $this->siteConfigSyncDirectory() . '/../testing',
+                $this->siteConfigSyncDirectory(),
+                null,
+                ['override' => true]
+            );
+        }
     }
 
     /**

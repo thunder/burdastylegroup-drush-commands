@@ -37,9 +37,9 @@ trait BackendCommandsTrait
     private $projectDirectory;
 
     /**
-     * @var bool
+     * @var string
      */
-    private $forceProduction;
+    private $environment;
 
     /**
      * @hook init
@@ -51,7 +51,7 @@ trait BackendCommandsTrait
     {
         // Initialize project directory.
         $this->projectDirectory = $input->getOption('project-directory') ?: Drush::bootstrapManager()->getComposerRoot();
-        $this->forceProduction = (bool) $input->getOption('force-production');
+        $this->environment = $input->getOption('environment');
     }
 
     /**
@@ -60,11 +60,12 @@ trait BackendCommandsTrait
      * @hook option @options-backend
      *
      * @option project-directory The base directory of the project. Defaults to composer root of project .
-     * @option force-production The installation is forced to be without the local config. Defaults to false.
+     * @option environment Choose environment the installation is built for, i.e. which config folders are used.
+     *   Possible values are "local", "testing" and "prod". (Defaults to "prod").
      *
      * @param array $options
      */
-    public function optionsBackend($options = ['project-directory' => false, 'force-production' => false])
+    public function optionsBackend($options = ['project-directory' => false, 'environment' => 'prod'])
     {
     }
 
@@ -165,13 +166,6 @@ trait BackendCommandsTrait
     protected function siteConfigSyncDirectory(): string
     {
         return $this->drupalRootDirectory().'/'.Settings::get('config_sync_directory', false);
-    }
-    /**
-     * @return bool
-     */
-    protected function forceProduction(): bool
-    {
-        return $this->forceProduction;
     }
 
     /**
