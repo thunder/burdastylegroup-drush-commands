@@ -247,7 +247,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         $options = [];
         foreach ($this->input()->getOptions() as $key => $value) {
             if (!empty($value) && 'root' !== $key) {
-                $options[] = '--'.$key.'='.$value.' ';
+                $options[] = '--'.$key.'='.$value;
             }
         }
 
@@ -303,9 +303,9 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     protected function corePatches(bool $revert = false)
     {
         $patches = [
-          'https://www.drupal.org/files/issues/2020-09-14/3169756-2-11.patch',
-          'https://www.drupal.org/files/issues/2020-06-03/2488350-3-98.patch',
-          'https://www.drupal.org/files/issues/2020-07-17/3086307-48.patch',
+            'https://www.drupal.org/files/issues/2020-09-14/3169756-2-11.patch',
+            'https://www.drupal.org/files/issues/2020-06-03/2488350-3-98.patch',
+            'https://www.drupal.org/files/issues/2020-07-17/3086307-48.patch',
         ];
 
         $command = ['patch', '-p1'];
