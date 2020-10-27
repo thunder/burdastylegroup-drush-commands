@@ -44,6 +44,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
 
         if ($this->environment !== 'local') {
             // Remove local config to prevent pollution of export with development values caused by nimbus.
+            // @todo Remove after nimbus is gone.
             $this->filesystem->remove($this->siteConfigSyncDirectory().'/../local');
         }
 
@@ -277,7 +278,14 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
             ['override' => true]
         );
 
-        if ($this->environment === 'testing') {
+        if ($this->environment === 'local') {
+            $this->filesystem->mirror(
+                $this->siteConfigSyncDirectory().'/../local',
+                $this->siteConfigSyncDirectory(),
+                null,
+                ['override' => true]
+            );
+        } elseif ($this->environment === 'testing') {
             $this->filesystem->mirror(
                 $this->siteConfigSyncDirectory().'/../testing',
                 $this->siteConfigSyncDirectory(),
