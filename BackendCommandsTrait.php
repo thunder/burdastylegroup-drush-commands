@@ -3,20 +3,19 @@
 namespace Drush\Commands\BurdaStyleGroup;
 
 use Consolidation\AnnotatedCommand\AnnotationData;
-use Consolidation\AnnotatedCommand\CommandData;
 use Consolidation\AnnotatedCommand\CommandError;
 use Consolidation\SiteAlias\SiteAliasInterface;
-use Consolidation\SiteAlias\SiteAliasManagerAwareInterface;
 use Consolidation\SiteAlias\SiteAliasManagerAwareTrait;
-use Drush\Commands\DrushCommands;
+use Drupal\Core\Site\Settings;
+use Drush\Drush;
 use Symfony\Component\Console\Input\InputInterface;
+use Webmozart\PathUtil\Path;
 
 /**
- * Base class for backend drush commands.
+ * Trait for backend drush commands.
  */
-abstract class AbstractBackendCommandsBase extends DrushCommands implements SiteAliasManagerAwareInterface
+trait BackendCommandsTrait
 {
-
     use SiteAliasManagerAwareTrait;
 
     /**
@@ -40,12 +39,7 @@ abstract class AbstractBackendCommandsBase extends DrushCommands implements Site
     /**
      * @var string
      */
-    private $siteDomainDirectory;
-
-    /**
-     * @var bool
-     */
-    private $forceProduction;
+    private $environment;
 
     /**
      * @hook init
@@ -56,28 +50,8 @@ abstract class AbstractBackendCommandsBase extends DrushCommands implements Site
     public function initCommands(InputInterface $input, AnnotationData $annotationData)
     {
         // Initialize project directory.
-        $this->projectDirectory = $input->getOption('project-directory');
-        $this->forceProduction = (bool) $input->getOption('force-production');
-    }
-
-    /**
-     * Validate, that the given site alias is supported by this drush command.
-     *
-     * @hook validate @validate-site-alias
-     *
-     * @param  \Consolidation\AnnotatedCommand\CommandData $commandData
-     *
-     * @return \Consolidation\AnnotatedCommand\CommandError|null
-     */
-    public function validateSite(CommandData $commandData)
-    {
-        $aliasName = $this->selfRecord()->name();
-
-        if (!in_array($aliasName, $this->supportedAliases())) {
-            $msg = dt('Site !name does not exist, or is not supported.', ['!name' => $aliasName]);
-
-            return new CommandError($msg);
-        }
+        $this->projectDirectory = $input->getOption('project-directory') ?: Drush::bootstrapManager()->getComposerRoot();
+        $this->environment = $input->getOption('environment');
     }
 
     /**
@@ -85,12 +59,13 @@ abstract class AbstractBackendCommandsBase extends DrushCommands implements Site
      *
      * @hook option @options-backend
      *
-     * @option project-directory The base directory of the project. Defaults to '/var/www/html'.
-     * @option force-production The installation is forced to be without the local config. Defaults to false.
+     * @option project-directory The base directory of the project. Defaults to composer root of project .
+     * @option environment Choose environment the installation is built for, i.e. which config folders are used.
+     *   Possible values are "local", "testing" and "prod". (Defaults to "prod").
      *
      * @param array $options
      */
-    public function optionsBackend($options = ['project-directory' => '/var/www/html', 'force-production' => false])
+    public function optionsBackend($options = ['project-directory' => false, 'environment' => 'prod'])
     {
     }
 
@@ -149,23 +124,38 @@ abstract class AbstractBackendCommandsBase extends DrushCommands implements Site
     }
 
     /**
+     * The drupal root directory for a given site.
+     *
+     * @return string
+     */
+    protected function drupalRootDirectory()
+    {
+        return $this->projectDirectory().'/docroot';
+    }
+
+    /**
      * The site directory for a given site.
+     * @see SiteInstallCommands::getSitesSubdirFromUri().
      *
      * @return string
      */
     protected function siteDirectory(): string
     {
-        return $this->projectDirectory().'/docroot/sites/'.$this->siteDomainDirectory();
-    }
+        $uri = preg_replace('#^https?://#', '', $this->selfRecord()->get('uri'));
+        $sitesFile = $this->drupalRootDirectory().'/sites/sites.php';
+        if (file_exists($sitesFile)) {
+            include $sitesFile;
+            /** @var array $sites */
+            if (isset($sites) && array_key_exists($uri, $sites)) {
+                return Path::join($this->drupalRootDirectory(), 'sites', $sites[$uri]);
+            }
+        }
+        // Fall back to default directory if it exists.
+        if (file_exists(Path::join($this->drupalRootDirectory(), 'sites', 'default'))) {
+            return 'default';
+        }
 
-    /**
-     * The directory, where the shared configuration is placed.
-     *
-     * @return string
-     */
-    protected function sharedConfigDirectory(): string
-    {
-        return $this->projectDirectory().'/config/shared';
+        return false;
     }
 
     /**
@@ -173,17 +163,9 @@ abstract class AbstractBackendCommandsBase extends DrushCommands implements Site
      *
      * @return string
      */
-    protected function siteConfigDirectory(): string
+    protected function siteConfigSyncDirectory(): string
     {
-        return $this->projectDirectory().'/config/'.$this->siteDomainDirectory();
-    }
-
-    /**
-     * @return bool
-     */
-    protected function forceProduction(): bool
-    {
-        return $this->forceProduction;
+        return $this->drupalRootDirectory().'/'.Settings::get('config_sync_directory', false);
     }
 
     /**
@@ -204,19 +186,5 @@ abstract class AbstractBackendCommandsBase extends DrushCommands implements Site
     protected function supportedAliases()
     {
         return array_keys($this->siteDomainDirectoryMapping);
-    }
-
-    /**
-     * @return string
-     */
-    private function siteDomainDirectory(): string
-    {
-        if (isset($this->siteDomainDirectory)) {
-            return $this->siteDomainDirectory;
-        }
-
-        $this->siteDomainDirectory = $this->siteDomainDirectoryMapping[$this->selfRecord()->name()];
-
-        return $this->siteDomainDirectory;
     }
 }

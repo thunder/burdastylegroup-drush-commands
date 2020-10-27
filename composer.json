@@ -14,5 +14,12 @@
   ],
   "extra": {
     "installer-name": "BurdaStyleGroup"
+  },
+  "require-dev": {
+    "escapestudios/symfony2-coding-standard": "^3.11"
+  },
+  "scripts": {
+    "cs": "phpcs",
+    "cbf": "phpcbf"
   }
 }

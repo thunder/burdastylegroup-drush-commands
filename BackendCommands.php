@@ -3,15 +3,19 @@
 namespace Drush\Commands\BurdaStyleGroup;
 
 use Consolidation\AnnotatedCommand\CommandData;
+use Drush\Commands\DrushCommands;
+use Drush\SiteAlias\SiteAliasManagerAwareInterface;
+use Drush\Sql\SqlBase;
 use Symfony\Component\Filesystem\Filesystem;
 
-include "AbstractBackendCommandsBase.php";
+include "BackendCommandsTrait.php";
 
 /**
  * Backend drush commands.
  */
-class BackendCommands extends AbstractBackendCommandsBase
+class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInterface
 {
+    use BackendCommandsTrait;
 
     /**
      * @var \Symfony\Component\Filesystem\Filesystem
@@ -38,9 +42,10 @@ class BackendCommands extends AbstractBackendCommandsBase
     {
         $this->populateConfigSyncDirectory();
 
-        if ($this->forceProduction()) {
+        if ($this->environment !== 'local') {
             // Remove local config to prevent pollution of export with development values caused by nimbus.
-            $this->filesystem->remove($this->siteConfigDirectory().'/local');
+            // @todo Remove after nimbus is gone.
+            $this->filesystem->remove($this->siteConfigSyncDirectory().'/../local');
         }
 
         // Apply core patches
@@ -60,6 +65,10 @@ class BackendCommands extends AbstractBackendCommandsBase
      *
      * @usage drush @elle backend:install-site
      *   Installs elle project from config.
+     *
+     * @bootstrap config
+     *
+     * @kernel installer
      */
     public function install()
     {
@@ -81,15 +90,17 @@ class BackendCommands extends AbstractBackendCommandsBase
      */
     public function postInstallCommand($result, CommandData $commandData)
     {
-        // Remove the patch
+        // Remove the patch.
         $this->corePatches($revert = true);
 
         // Cleanup config sync directory we filled up before and revert changes made by site-install
-        $this->process(['git', 'clean', '--force', '--quiet', '.'], $this->siteConfigDirectory().'/sync');
+        $this->process(['git', 'clean', '--force', '--quiet', '.'], $this->siteConfigSyncDirectory());
+        $this->process(['git', 'checkout', '.'], $this->siteConfigSyncDirectory());
+
         $this->process(['git', 'checkout', $this->siteDirectory().'/settings.php'], $this->projectDirectory());
 
-        if ($this->forceProduction()) {
-            $this->process(['git', 'checkout', $this->siteConfigDirectory().'/local']);
+        if ($this->environment !== 'local') {
+            $this->process(['git', 'checkout', $this->siteConfigSyncDirectory().'/../local']);
         }
     }
 
@@ -141,20 +152,23 @@ class BackendCommands extends AbstractBackendCommandsBase
      *
      * @usage drush @elle backend:export-config
      *   Exports the elle configuration.
+     *
+     * @bootstrap config
      */
     public function configExport()
     {
         // export the config into the export folder.
         $this->drush($this->selfRecord(), 'config:export', [], ['yes' => true]);
 
-        if ($this->forceProduction()) {
+        if ($this->environment !== 'local') {
             // Nimbus will overwrite local config files with the production values.
-            $this->process(['git', 'checkout', $this->siteConfigDirectory().'/local']);
+            $this->process(['git', 'checkout', $this->siteConfigSyncDirectory().'/../local']);
         }
 
         // Move config into shared and site specific folders.
+        // @todo Fix sync-config.sh expecting relative path.
         $this->process(
-            ['scripts/sync-config.sh', $this->siteConfigDirectory().'/export'],
+            ['scripts/sync-config.sh', $this->siteConfigSyncDirectory().'/../export'],
             $this->projectDirectory()
         );
     }
@@ -201,18 +215,43 @@ class BackendCommands extends AbstractBackendCommandsBase
     }
 
     /**
+     * Creates a phpunit database generation script.
+     *
+     * @command backend:create-testing-dump
+     *
+     * @aliases backend:dump
+     *
+     * @options-backend
+     *
+     * @usage drush @elle backend:create-testing-dump
+     *   Creates a phpunit database generation script for the site elle.
+     *
+     * @bootstrap config
+     */
+    public function createTestingDump()
+    {
+        $sql = SqlBase::create();
+        $dbSpec = $sql->getDbSpec();
+        $dbUrl = $dbSpec['driver'].'://'.$dbSpec['username'].':'.$dbSpec['password'].'@'.$dbSpec['host'].':'.$dbSpec['port'].'/'.$dbSpec['database'];
+
+        $this->process(['php', 'core/scripts/db-tools.php', 'dump-database-d8-mysql', '--database-url', $dbUrl], $this->drupalRootDirectory());
+    }
+
+    /**
      * Gets an options string from the input options.
      *
      * @return string
      */
-    protected function getOptionsString() {
-      $string = '';
-      foreach ($this->input()->getOptions() as $key => $value) {
-        if (!empty($value) && $key !== 'root') {
-          $string.= '--' . $key . '=' . $value . ' ';
+    protected function getOptionsString()
+    {
+        $string = '';
+        foreach ($this->input()->getOptions() as $key => $value) {
+            if (!empty($value) && 'root' !== $key) {
+                $string .= '--'.$key.'='.$value.' ';
+            }
         }
-      }
-      return trim($string);
+
+        return trim($string);
     }
 
     /**
@@ -227,17 +266,33 @@ class BackendCommands extends AbstractBackendCommandsBase
         // First copy shared config into config/{site}/sync, then overwrite this
         // with files from config/{site}/override.
         $this->filesystem->mirror(
-            $this->sharedConfigDirectory(),
-            $this->siteConfigDirectory().'/sync',
+            $this->siteConfigSyncDirectory().'/../../shared',
+            $this->siteConfigSyncDirectory(),
             null,
             ['override' => true]
         );
         $this->filesystem->mirror(
-            $this->siteConfigDirectory().'/override',
-            $this->siteConfigDirectory().'/sync',
+            $this->siteConfigSyncDirectory().'/../override',
+            $this->siteConfigSyncDirectory(),
             null,
             ['override' => true]
         );
+
+        if ($this->environment === 'local') {
+            $this->filesystem->mirror(
+                $this->siteConfigSyncDirectory().'/../local',
+                $this->siteConfigSyncDirectory(),
+                null,
+                ['override' => true]
+            );
+        } elseif ($this->environment === 'testing') {
+            $this->filesystem->mirror(
+                $this->siteConfigSyncDirectory().'/../testing',
+                $this->siteConfigSyncDirectory(),
+                null,
+                ['override' => true]
+            );
+        }
     }
 
     /**
@@ -261,7 +316,7 @@ class BackendCommands extends AbstractBackendCommandsBase
 
         foreach ($patches as $patch) {
             $stream = fopen($patch, 'r');
-            $this->process($command, $this->projectDirectory().'/docroot', null, $stream);
+            $this->process($command, $this->drupalRootDirectory(), null, $stream);
             fclose($stream);
         }
     }

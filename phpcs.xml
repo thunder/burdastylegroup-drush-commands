@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="drush">
+    <description>Default PHP CodeSniffer configuration for Drush commands.</description>
+    <rule ref="Symfony"/>
+    <file>.</file>
+    <exclude-pattern>vendor</exclude-pattern>
+    <arg value="sp"/>
+    <arg name="extensions" value="php" />
+    <arg name="warning-severity" value="0"/>
+</ruleset>
