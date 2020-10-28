@@ -148,8 +148,14 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      */
     public function configExport()
     {
+        if ($this->environment !== 'prod') {
+            $this->logger()->error('Only production will be exported. Current environment is "%environment".', ['%environment' => $this->environment]);
+
+            return;
+        }
+
         // export the config into the export folder.
-//        $this->drush($this->selfRecord(), 'config:export', [], ['yes' => true]);
+        $this->drush($this->selfRecord(), 'config:export', [], ['yes' => true]);
 
         $this->moveExportedConfig();
     }
@@ -247,28 +253,20 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         // First copy shared config into config/{site}/sync, then overwrite this
         // with files from config/{site}/override.
         $this->filesystem->mirror(
-            $this->siteConfigSyncDirectory().'/../../shared',
+            $this->configSharedDirectory(),
             $this->siteConfigSyncDirectory(),
             null,
             ['override' => true]
         );
         $this->filesystem->mirror(
-            $this->siteConfigSyncDirectory().'/../override',
+            $this->siteConfigOverrideDirectory(),
             $this->siteConfigSyncDirectory(),
             null,
             ['override' => true]
         );
-
-        if ($this->environment === 'local') {
+        if ($this->filesystem->exists($this->siteConfigEnvironmentDirectory($this->environment))) {
             $this->filesystem->mirror(
-                $this->siteConfigSyncDirectory().'/../local',
-                $this->siteConfigSyncDirectory(),
-                null,
-                ['override' => true]
-            );
-        } elseif ($this->environment === 'testing') {
-            $this->filesystem->mirror(
-                $this->siteConfigSyncDirectory().'/../testing',
+                $this->siteConfigEnvironmentDirectory($this->environment),
                 $this->siteConfigSyncDirectory(),
                 null,
                 ['override' => true]
@@ -279,37 +277,52 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     /**
      * Move files from sync folder to shared or override folders.
      */
-    protected function moveExportedConfig() {
-        $syncDirectory = $this->siteConfigSyncDirectory();
-        $sharedDirectory = $syncDirectory.'/../../shared';
-        $overrideDirectory = $syncDirectory.'/../override';
-        $localDirectory = $syncDirectory.'/../local';
+    protected function moveExportedConfig()
+    {
+        $exportedFiles = $this->getConfigFilesInDirectory($this->siteConfigSyncDirectory());
+        $overrideFiles = $this->getConfigFilesInDirectory($this->siteConfigOverrideDirectory());
+        $sharedFiles = $this->getConfigFilesInDirectory($this->configSharedDirectory());
+        $localFiles = $this->getConfigFilesInDirectory($this->siteConfigEnvironmentDirectory('local'));
+        $modifiedFiles = [];
 
-
-        $exportedFiles = $this->getConfigFilesInDirectory($syncDirectory);
-        $overrideFiles = $this->getConfigFilesInDirectory($overrideDirectory);
-        $sharedFiles = $this->getConfigFilesInDirectory($sharedDirectory);
-        $localFiles = $this->getConfigFilesInDirectory($localDirectory);
-
-        print_r($exportedFiles); die();
-
-
-        foreach ($exportedFiles as $file) {
-            // move to override if exists in override
-            // OR move to shared if exists in shared
-            if (in_array($file, $overrideFiles)) {
-                //$this->filesystem->copy();
+        foreach ($exportedFiles as $fileName => $fullPath) {
+            // First check, if the file should be put into the override directory.
+            // Then check, if the file should be put into the shared directory instead.
+            if (isset($overrideFiles[$fileName])) {
+                if (!$this->filesAreEqual($overrideFiles[$fileName], $fullPath)) {
+                    $this->filesystem->copy($fullPath, $overrideFiles[$fileName], true);
+                    $modifiedFiles[$fileName] = $fullPath;
+                }
+                $this->filesystem->remove($fullPath);
+            } elseif (isset($sharedFiles[$fileName])) {
+                if (!$this->filesAreEqual($sharedFiles[$fileName], $fullPath)) {
+                    $this->filesystem->copy($fullPath, $sharedFiles[$fileName], true);
+                    $modifiedFiles[$fileName] = $fullPath;
+                }
+                $this->filesystem->remove($fullPath);
             }
-
-            // AND log as local file, if exists in local
         }
 
-        foreach ($overrideFiles as $file) {
-            // remove from override if not exists in exported
+        // Give information to the user, when we modified a configuration that also exists in local config.
+        // TODO: revisit, when local config folder has been removed.
+        foreach ($modifiedFiles as $fileName => $fullPath) {
+            if (isset($localFiles[$fileName])) {
+                $this->io()->block('Configuration file "'.$fileName.'" was changed and exists in local config folder. Please check, if local config has to be manually modified.', 'INFO', 'fg=yellow');
+            }
         }
 
-        foreach ($sharedFiles as $file) {
-            // remove from shared if not exists in exported
+        // Remove files from override, that were not exported anymore.
+        foreach ($overrideFiles as $fileName => $fullPath) {
+            if (!isset($exportedFiles[$fileName])) {
+                $this->filesystem->remove($fullPath);
+            }
+        }
+
+        // Remove files from shared, that were not exported anymore.
+        foreach ($sharedFiles as $fileName => $fullPath) {
+            if (!isset($exportedFiles[$fileName])) {
+                $this->filesystem->remove($fullPath);
+            }
         }
     }
 
@@ -321,9 +334,9 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     protected function corePatches(bool $revert = false)
     {
         $patches = [
-            'https://www.drupal.org/files/issues/2020-09-14/3169756-2-11.patch',
-            'https://www.drupal.org/files/issues/2020-06-03/2488350-3-98.patch',
-            'https://www.drupal.org/files/issues/2020-07-17/3086307-48.patch',
+          'https://www.drupal.org/files/issues/2020-09-14/3169756-2-11.patch',
+          'https://www.drupal.org/files/issues/2020-06-03/2488350-3-98.patch',
+          'https://www.drupal.org/files/issues/2020-07-17/3086307-48.patch',
         ];
 
         $command = ['patch', '-p1'];
@@ -347,19 +360,51 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      * @return string[]
      *   The filenames of found config files.
      */
-    private function getConfigFilesInDirectory($directory) {
+    private function getConfigFilesInDirectory($directory)
+    {
+        if ($this->filesystem->exists($directory) === false) {
+            return [];
+        }
+
         $configFiles = [];
 
         // Finder does not reset its internal state, we need a new instance
         // everytime we use it.
         $finder = new Finder();
 
-        $finder->files()->files('*.yml');
-        foreach($finder->in($directory) as $file) {
-            $configFiles[$file->getBasename()] = $file->getFilename();
+        foreach ($finder->files()->name('*.yml')->in($directory) as $file) {
+            $configFiles[$file->getFilename()] = $file->getPath().DIRECTORY_SEPARATOR.$file->getFilename();
         }
 
         return $configFiles;
     }
 
+    /**
+     * Check if two file have the same content.
+     *
+     * @param $firstFile
+     * @param $secondFile
+     *
+     * @return bool
+     */
+    private function filesAreEqual($firstFile, $secondFile): bool
+    {
+        if (filesize($firstFile) !== filesize($secondFile)) {
+            return false;
+        }
+
+        $firstFileHandler = fopen($firstFile, 'rb');
+        $secondFileHandler = fopen($secondFile, 'rb');
+
+        while (!feof($firstFileHandler)) {
+            if (fread($firstFileHandler, 1024) != fread($secondFileHandler, 1024)) {
+                return false;
+            }
+        }
+
+        fclose($firstFileHandler);
+        fclose($secondFileHandler);
+
+        return true;
+    }
 }

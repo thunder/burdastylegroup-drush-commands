@@ -24,11 +24,11 @@ trait BackendCommandsTrait
      * @var string[]
      */
     private $siteDomainDirectoryMapping = [
-        '@elle.dev' => 'elle.de',
-        '@esquire.dev' => 'esquire.de',
-        '@freundin.dev' => 'freundin.de',
-        '@harpersbazaar.dev' => 'harpersbazaar.de',
-        '@instyle.dev' => 'instyle.de',
+      '@elle.dev' => 'elle.de',
+      '@esquire.dev' => 'esquire.de',
+      '@freundin.dev' => 'freundin.de',
+      '@harpersbazaar.dev' => 'harpersbazaar.de',
+      '@instyle.dev' => 'instyle.de',
     ];
 
     /**
@@ -84,7 +84,7 @@ trait BackendCommandsTrait
     {
         /**
          * @var \Consolidation\SiteProcess\SiteProcess $process
-        */
+         */
         $process = $this->processManager()->drush($siteAlias, $command, $args, $options, $optionsDoubleDash);
         $process->setTty(true);
         $process->mustRun($process->showRealtime());
@@ -112,7 +112,7 @@ trait BackendCommandsTrait
      *
      * @return \Consolidation\AnnotatedCommand\CommandError|string
      */
-    protected function projectDirectory()
+    protected function projectDirectory(): string
     {
         if (isset($this->projectDirectory)) {
             return $this->projectDirectory;
@@ -128,7 +128,7 @@ trait BackendCommandsTrait
      *
      * @return string
      */
-    protected function drupalRootDirectory()
+    protected function drupalRootDirectory(): string
     {
         return $this->projectDirectory().'/docroot';
     }
@@ -166,6 +166,38 @@ trait BackendCommandsTrait
     protected function siteConfigSyncDirectory(): string
     {
         return $this->drupalRootDirectory().'/'.Settings::get('config_sync_directory', false);
+    }
+
+    /**
+     * The directory, where shared configuration is placed.
+     *
+     * @return string
+     */
+    protected function configSharedDirectory(): string
+    {
+        return $this->siteConfigSyncDirectory().'/../../shared';
+    }
+
+    /**
+     * The directory, where site specific overridden configuration is placed.
+     *
+     * @return string
+     */
+    protected function siteConfigOverrideDirectory(): string
+    {
+        return $this->siteConfigSyncDirectory().'/../override';
+    }
+
+    /**
+     * The directory, where site specific configuration for the current environment is placed.
+     *
+     * @param string $environment
+     *  The environment to get the config directory for.
+     * @return string
+     */
+    protected function siteConfigEnvironmentDirectory(string $environment): string
+    {
+        return $this->siteConfigSyncDirectory().'/../'.$environment;
     }
 
     /**
