@@ -196,21 +196,21 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         // First install all sites with current code base.
         $this->process(['composer', 'install'], $this->projectDirectory());
 
-        // We use ::process() instead of ::drush() in the following druah calls
+        // We use ::process() instead of ::drush() in the following drush calls
         // to be able to provide the @alias. with ::drush, this would be translated
         // into --uri=http://domain.site, which we do not handle in code.
         foreach ($aliases as $alias) {
             // Install from config.
-            $this->process(['drush', $alias, 'backend:install', $this->getOptionsString()], $this->projectDirectory());
+            $this->process(['drush', $alias, 'backend:install'] + $this->getOptions(), $this->projectDirectory());
         }
 
         // Update codebase and translation files
-        $this->process(['drush', 'backend:update-code', $this->getOptionsString()], $this->projectDirectory());
+        $this->process(['drush', 'backend:update-code'] + $this->getOptions(), $this->projectDirectory());
 
         // Update database and export config for all sites.
         foreach ($aliases as $alias) {
-            $this->process(['drush', $alias, 'backend:update-database', $this->getOptionsString()], $this->projectDirectory());
-            $this->process(['drush', $alias, 'backend:config-export', $this->getOptionsString()], $this->projectDirectory());
+            $this->process(['drush', $alias, 'backend:update-database'] + $this->getOptions(), $this->projectDirectory());
+            $this->process(['drush', $alias, 'backend:config-export'] + $this->getOptions(), $this->projectDirectory());
         }
     }
 
@@ -238,20 +238,20 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     }
 
     /**
-     * Gets an options string from the input options.
+     * Gets an options from the input options.
      *
-     * @return string
+     * @return string[]
      */
-    protected function getOptionsString()
+    protected function getOptions()
     {
-        $string = '';
+        $options = [];
         foreach ($this->input()->getOptions() as $key => $value) {
             if (!empty($value) && 'root' !== $key) {
-                $string .= '--'.$key.'='.$value.' ';
+                $options[] = '--'.$key.'='.$value;
             }
         }
 
-        return trim($string);
+        return $options;
     }
 
     /**
