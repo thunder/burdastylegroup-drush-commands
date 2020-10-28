@@ -7,6 +7,7 @@ use Drush\Commands\DrushCommands;
 use Drush\SiteAlias\SiteAliasManagerAwareInterface;
 use Drush\Sql\SqlBase;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Finder\Finder;
 
 include "BackendCommandsTrait.php";
 
@@ -41,12 +42,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     public function preCommand(CommandData $commandData)
     {
         $this->populateConfigSyncDirectory();
-
-        if ($this->environment !== 'local') {
-            // Remove local config to prevent pollution of export with development values caused by nimbus.
-            // @todo Remove after nimbus is gone.
-            $this->filesystem->remove($this->siteConfigSyncDirectory().'/../local');
-        }
 
         // Apply core patches
         $this->corePatches();
@@ -98,10 +93,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         $this->process(['git', 'checkout', '.'], $this->siteConfigSyncDirectory());
 
         $this->process(['git', 'checkout', $this->siteDirectory().'/settings.php'], $this->projectDirectory());
-
-        if ($this->environment !== 'local') {
-            $this->process(['git', 'checkout', $this->siteConfigSyncDirectory().'/../local']);
-        }
     }
 
     /**
@@ -158,19 +149,9 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     public function configExport()
     {
         // export the config into the export folder.
-        $this->drush($this->selfRecord(), 'config:export', [], ['yes' => true]);
+//        $this->drush($this->selfRecord(), 'config:export', [], ['yes' => true]);
 
-        if ($this->environment !== 'local') {
-            // Nimbus will overwrite local config files with the production values.
-            $this->process(['git', 'checkout', $this->siteConfigSyncDirectory().'/../local']);
-        }
-
-        // Move config into shared and site specific folders.
-        // @todo Fix sync-config.sh expecting relative path.
-        $this->process(
-            ['scripts/sync-config.sh', $this->siteConfigSyncDirectory().'/../export'],
-            $this->projectDirectory()
-        );
+        $this->moveExportedConfig();
     }
 
     /**
@@ -258,7 +239,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      * Prepare the config/{site}/sync for being used by site-install.
      *
      * This is necessary, because config files are distributed to different
-     * folders by nimbus.
+     * folders.
      */
     protected function populateConfigSyncDirectory()
     {
@@ -296,6 +277,43 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     }
 
     /**
+     * Move files from sync folder to shared or override folders.
+     */
+    protected function moveExportedConfig() {
+        $syncDirectory = $this->siteConfigSyncDirectory();
+        $sharedDirectory = $syncDirectory.'/../../shared';
+        $overrideDirectory = $syncDirectory.'/../override';
+        $localDirectory = $syncDirectory.'/../local';
+
+
+        $exportedFiles = $this->getConfigFilesInDirectory($syncDirectory);
+        $overrideFiles = $this->getConfigFilesInDirectory($overrideDirectory);
+        $sharedFiles = $this->getConfigFilesInDirectory($sharedDirectory);
+        $localFiles = $this->getConfigFilesInDirectory($localDirectory);
+
+        print_r($exportedFiles); die();
+
+
+        foreach ($exportedFiles as $file) {
+            // move to override if exists in override
+            // OR move to shared if exists in shared
+            if (in_array($file, $overrideFiles)) {
+                //$this->filesystem->copy();
+            }
+
+            // AND log as local file, if exists in local
+        }
+
+        foreach ($overrideFiles as $file) {
+            // remove from override if not exists in exported
+        }
+
+        foreach ($sharedFiles as $file) {
+            // remove from shared if not exists in exported
+        }
+    }
+
+    /**
      * Apply or revoke patches to drupal core.
      *
      * @param bool $revert
@@ -320,4 +338,28 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
             fclose($stream);
         }
     }
+
+    /**
+     * Get all config files in a given directory.
+     *
+     * @param $directory
+     *   The directory to find config files in.
+     * @return string[]
+     *   The filenames of found config files.
+     */
+    private function getConfigFilesInDirectory($directory) {
+        $configFiles = [];
+
+        // Finder does not reset its internal state, we need a new instance
+        // everytime we use it.
+        $finder = new Finder();
+
+        $finder->files()->files('*.yml');
+        foreach($finder->in($directory) as $file) {
+            $configFiles[$file->getBasename()] = $file->getFilename();
+        }
+
+        return $configFiles;
+    }
+
 }
