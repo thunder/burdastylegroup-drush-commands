@@ -39,7 +39,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      *
      * @param \Consolidation\AnnotatedCommand\CommandData $commandData
      */
-    public function preCommand(CommandData $commandData)
+    public function preInstallCommand(CommandData $commandData)
     {
         $this->populateConfigSyncDirectory();
 
@@ -54,8 +54,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      *
      * @aliases backend:si
      *
-     * @validate-site-alias
-     *
      * @options-backend
      *
      * @usage drush @elle backend:install-site
@@ -68,11 +66,11 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     public function install()
     {
         // Cleanup existing installation.
-        $this->drush($this->selfRecord(), 'sql-create', [], ['yes' => true]);
+        $this->drush($this->selfRecord(), 'sql-create', [], ['yes' => $this->input()->getOption('yes')]);
         $this->drush($this->selfRecord(), 'cache:rebuild');
 
         // Do the site install
-        $this->drush($this->selfRecord(), 'site:install', [], ['existing-config' => true, 'yes' => true]);
+        $this->drush($this->selfRecord(), 'site:install', [], ['existing-config' => true, 'yes' => $this->input()->getOption('yes')]);
     }
 
     /**
@@ -87,11 +85,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     {
         // Remove the patch.
         $this->corePatches($revert = true);
-
-        // Cleanup config sync directory we filled up before and revert changes made by site-install
-        $this->process(['git', 'clean', '--force', '--quiet', '.'], $this->siteConfigSyncDirectory());
-        $this->process(['git', 'checkout', '.'], $this->siteConfigSyncDirectory());
-
         $this->process(['git', 'checkout', $this->siteDirectory().'/settings.php'], $this->projectDirectory());
     }
 
@@ -125,13 +118,34 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      */
     public function updateDatabase()
     {
-        $this->drush($this->selfRecord(), 'updatedb', [], ['yes' => true]);
+        $this->drush($this->selfRecord(), 'updatedb', [], ['yes' => $this->input()->getOption('yes')]);
         $this->drush($this->selfRecord(), 'cache:rebuild');
-        $this->drush($this->selfRecord(), 'locale-update', [], ['yes' => true]);
+        $this->drush($this->selfRecord(), 'locale-update', [], ['yes' => $this->input()->getOption('yes')]);
+    }
+
+    /**
+     * Runs populateConfigSyncDirectory() for backend:config-export.
+     *
+     * As long as we have to handle environment specific config, this can not
+     * be a post command for the default drush config:import command.
+     *
+     * TODO: Revisit when we do not need the local- and testing-environment config
+     * TODO: folder anymore. Then decide if we can make this a post command for config:*.
+     *
+     * @hook pre-command backend:config-export
+     *
+     * @param \Consolidation\AnnotatedCommand\CommandData $commandData
+     */
+    public function preConfigExportCommand(CommandData $commandData)
+    {
+        $this->populateConfigSyncDirectory();
     }
 
     /**
      * Export configuration of BurdaStyle backend site.
+     *
+     * TODO: Revisit when we do not need the local- and testing-environment config
+     * TODO: folder anymore. Then decide if we can make this a post command for config:export.
      *
      * @command backend:config-export
      *
@@ -139,9 +153,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      *
      * @options-backend
      *
-     * @validate-site-alias
-     *
-     * @usage drush @elle backend:export-config
+     * @usage drush @elle backend:config-export
      *   Exports the elle configuration.
      *
      * @bootstrap config
@@ -155,9 +167,113 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         }
 
         // export the config into the export folder.
-        $this->drush($this->selfRecord(), 'config:export', [], ['yes' => true]);
+        $this->drush($this->selfRecord(), 'config:export', [], ['yes' => $this->input()->getOption('yes')]);
+    }
 
-        $this->moveExportedConfig();
+    /**
+     * Move files from sync folder to shared or override folders.
+     *
+     * As long as we have to handle environment specific config, this can not
+     * be a post command for the default drush config:import command.
+     *
+     * TODO: Revisit when we do not need the local- and testing-environment config
+     * TODO: folder anymore. Then decide if we can make this a post command for config:export.
+     *
+     * @hook post-command backend:config-export
+     *
+     * @param $result
+     * @param \Consolidation\AnnotatedCommand\CommandData $commandData
+     */
+    public function postConfigExportCommand($result, CommandData $commandData)
+    {
+        $exportedFiles = $this->getConfigFilesInDirectory($this->siteConfigSyncDirectory());
+        $overrideFiles = $this->getConfigFilesInDirectory($this->siteConfigOverrideDirectory());
+        $sharedFiles = $this->getConfigFilesInDirectory($this->configSharedDirectory());
+        $localFiles = $this->getConfigFilesInDirectory($this->siteConfigEnvironmentDirectory('local'));
+        $modifiedFiles = [];
+
+        foreach ($exportedFiles as $fileName => $fullPath) {
+            // First check, if the file should be put into the override directory.
+            // otherwise check, if the file should be put into the shared directory.
+            if (isset($overrideFiles[$fileName])) {
+                if (!$this->filesAreEqual($overrideFiles[$fileName], $fullPath)) {
+                    $this->filesystem->copy($fullPath, $overrideFiles[$fileName], true);
+                    $modifiedFiles[$fileName] = $fullPath;
+                }
+            } elseif (isset($sharedFiles[$fileName])) {
+                if (!$this->filesAreEqual($sharedFiles[$fileName], $fullPath)) {
+                    $this->filesystem->copy($fullPath, $sharedFiles[$fileName], true);
+                    $modifiedFiles[$fileName] = $fullPath;
+                }
+            }
+        }
+
+        // Give information to the user, when we modified a configuration that also exists in local config.
+        // TODO: revisit, when local config folder has been removed.
+        foreach ($modifiedFiles as $fileName => $fullPath) {
+            if (isset($localFiles[$fileName])) {
+                $this->io()->block('Configuration file "'.$fileName.'" was changed and exists in local config folder. Please check, if local config has to be manually modified.', 'INFO', 'fg=yellow');
+            }
+        }
+
+        // Remove files from override, that were not exported anymore.
+        foreach ($overrideFiles as $fileName => $fullPath) {
+            if (!isset($exportedFiles[$fileName])) {
+                $this->filesystem->remove($fullPath);
+            }
+        }
+
+        // Remove files from shared, that were not exported anymore.
+        foreach ($sharedFiles as $fileName => $fullPath) {
+            if (!isset($exportedFiles[$fileName])) {
+                $this->filesystem->remove($fullPath);
+            }
+        }
+    }
+
+    /**
+     * Runs populateConfigSyncDirectory() for backend:config-import.
+     *
+     * As long as we have to handle environment specific config, this can not
+     * be a post command for the default drush config:import command.
+     *
+     * TODO: Revisit when we do not need the local- and testing-environment config
+     * TODO: folder anymore. Then decide if we can make this a post command for config:*.
+     *
+     * @hook pre-command backend:config-import
+     *
+     * @param \Consolidation\AnnotatedCommand\CommandData $commandData
+     */
+    public function preConfigImportCommand(CommandData $commandData)
+    {
+        $this->populateConfigSyncDirectory();
+    }
+
+    /**
+     * Import configuration of BurdaStyle backend site.
+     *
+     * This is simple wrapper to default the config:import command. it is only
+     * until we can get rid of the environment specific config directories
+     * (local and testing).
+     *
+     * TODO: Revisit when we do not need local and testing anymore. Then we can
+     * TODO: delete this command and change the preConfigImportCommand to hook
+     * TODO: to the default config:import command.
+     *
+     * @command backend:config-import
+     *
+     * @aliases backend:cim
+     *
+     * @options-backend
+     *
+     * @usage drush @elle backend:config-import
+     *   Exports the elle configuration.
+     *
+     * @bootstrap config
+     */
+    public function configImport()
+    {
+        $this->drush($this->selfRecord(), 'config:import', [], ['yes' => $this->input()->getOption('yes')]);
     }
 
     /**
@@ -225,7 +341,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     }
 
     /**
-     * Gets an options from the input options.
+     * Gets a cleaned up array of $key=$value strings from the input options.
      *
      * @return string[]
      */
@@ -242,12 +358,12 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     }
 
     /**
-     * Prepare the config/{site}/sync for being used by site-install.
+     * Prepare the config/{site}/sync for being used by site-install, config-export and config-import.
      *
      * This is necessary, because config files are distributed to different
      * folders.
      */
-    protected function populateConfigSyncDirectory()
+    protected function populateConfigSyncDirectory(): void
     {
         // Prepare config-sync directory for site install with existing config.
         // First copy shared config into config/{site}/sync, then overwrite this
@@ -271,58 +387,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
                 null,
                 ['override' => true]
             );
-        }
-    }
-
-    /**
-     * Move files from sync folder to shared or override folders.
-     */
-    protected function moveExportedConfig()
-    {
-        $exportedFiles = $this->getConfigFilesInDirectory($this->siteConfigSyncDirectory());
-        $overrideFiles = $this->getConfigFilesInDirectory($this->siteConfigOverrideDirectory());
-        $sharedFiles = $this->getConfigFilesInDirectory($this->configSharedDirectory());
-        $localFiles = $this->getConfigFilesInDirectory($this->siteConfigEnvironmentDirectory('local'));
-        $modifiedFiles = [];
-
-        foreach ($exportedFiles as $fileName => $fullPath) {
-            // First check, if the file should be put into the override directory.
-            // Then check, if the file should be put into the shared directory instead.
-            if (isset($overrideFiles[$fileName])) {
-                if (!$this->filesAreEqual($overrideFiles[$fileName], $fullPath)) {
-                    $this->filesystem->copy($fullPath, $overrideFiles[$fileName], true);
-                    $modifiedFiles[$fileName] = $fullPath;
-                }
-                $this->filesystem->remove($fullPath);
-            } elseif (isset($sharedFiles[$fileName])) {
-                if (!$this->filesAreEqual($sharedFiles[$fileName], $fullPath)) {
-                    $this->filesystem->copy($fullPath, $sharedFiles[$fileName], true);
-                    $modifiedFiles[$fileName] = $fullPath;
-                }
-                $this->filesystem->remove($fullPath);
-            }
-        }
-
-        // Give information to the user, when we modified a configuration that also exists in local config.
-        // TODO: revisit, when local config folder has been removed.
-        foreach ($modifiedFiles as $fileName => $fullPath) {
-            if (isset($localFiles[$fileName])) {
-                $this->io()->block('Configuration file "'.$fileName.'" was changed and exists in local config folder. Please check, if local config has to be manually modified.', 'INFO', 'fg=yellow');
-            }
-        }
-
-        // Remove files from override, that were not exported anymore.
-        foreach ($overrideFiles as $fileName => $fullPath) {
-            if (!isset($exportedFiles[$fileName])) {
-                $this->filesystem->remove($fullPath);
-            }
-        }
-
-        // Remove files from shared, that were not exported anymore.
-        foreach ($sharedFiles as $fileName => $fullPath) {
-            if (!isset($exportedFiles[$fileName])) {
-                $this->filesystem->remove($fullPath);
-            }
         }
     }
 
