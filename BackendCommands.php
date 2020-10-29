@@ -124,13 +124,31 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     }
 
     /**
+     * Check, if prod environment is exported.
+     *
+     * TODO: Well not be needed when there are no environment specific config folders.
+     *
+     * @hook validate backend:config-export
+     *
+     * @param \Consolidation\AnnotatedCommand\CommandData $commandData
+     *
+     * @throws \Exception
+     */
+    public function validateConfigExport(CommandData $commandData)
+    {
+        if ($this->environment !== 'prod') {
+            throw new \Exception(dt('Only production can be exported. Current environment is "%environment".', ['%environment' => $this->environment]));
+        }
+    }
+
+    /**
      * Runs populateConfigSyncDirectory() for backend:config-export.
      *
      * As long as we have to handle environment specific config, this can not
      * be a post command for the default drush config:import command.
      *
      * TODO: Revisit when we do not need the local- and testing-environment config
-     * TODO: folder anymore. Then decide if we can make this a post command for config:*.
+     * TODO: folder anymore. Then decide if we can make this a post command for config.
      *
      * @hook pre-command backend:config-export
      *
@@ -160,13 +178,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      */
     public function configExport()
     {
-        if ($this->environment !== 'prod') {
-            $this->logger()->error('Only production will be exported. Current environment is "%environment".', ['%environment' => $this->environment]);
-
-            return;
-        }
-
-        // export the config into the export folder.
         $this->drush($this->selfRecord(), 'config:export', [], ['yes' => $this->input()->getOption('yes')]);
     }
 
