@@ -18,104 +18,104 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
 {
     use BackendCommandsTrait;
 
-  /**
-   * @var \Symfony\Component\Filesystem\Filesystem
-   */
+    /**
+     * @var \Symfony\Component\Filesystem\Filesystem
+     */
     protected $filesystem;
 
-  /**
-   * BackendCommands constructor.
-   */
+    /**
+     * BackendCommands constructor.
+     */
     public function __construct()
     {
         parent::__construct();
         $this->filesystem = new Filesystem();
     }
 
-  /**
-   * Prepare file system and code to be ready for install.
-   *
-   * @hook pre-command backend:install
-   *
-   * @param \Consolidation\AnnotatedCommand\CommandData $commandData
-   */
+    /**
+     * Prepare file system and code to be ready for install.
+     *
+     * @hook pre-command backend:install
+     *
+     * @param \Consolidation\AnnotatedCommand\CommandData $commandData
+     */
     public function preInstallCommand(CommandData $commandData)
     {
         $this->populateConfigSyncDirectory();
 
-      // Apply core patches
+        // Apply core patches
         $this->corePatches();
     }
 
-  /**
-   * Install a BurdaStyle backend site from existing configuration.
-   *
-   * @command backend:install
-   *
-   * @aliases backend:si
-   *
-   * @options-backend
-   *
-   * @usage drush @elle backend:install-site
-   *   Installs elle project from config.
-   *
-   * @bootstrap config
-   *
-   * @kernel installer
-   */
+    /**
+     * Install a BurdaStyle backend site from existing configuration.
+     *
+     * @command backend:install
+     *
+     * @aliases backend:si
+     *
+     * @options-backend
+     *
+     * @usage drush @elle backend:install-site
+     *   Installs elle project from config.
+     *
+     * @bootstrap config
+     *
+     * @kernel installer
+     */
     public function install()
     {
-      // Cleanup existing installation.
+        // Cleanup existing installation.
         $this->drush($this->selfRecord(), 'sql-create', [], ['yes' => $this->input()->getOption('yes')]);
         $this->drush($this->selfRecord(), 'cache:rebuild');
 
-      // Do the site install
+        // Do the site install
         $this->drush($this->selfRecord(), 'site:install', [], ['existing-config' => true, 'yes' => $this->input()->getOption('yes')]);
     }
 
-  /**
-   * Clean-up installation side-effects.
-   *
-   * @hook post-command backend:install
-   *
-   * @param $result
-   * @param \Consolidation\AnnotatedCommand\CommandData $commandData
-   */
+    /**
+     * Clean-up installation side-effects.
+     *
+     * @hook post-command backend:install
+     *
+     * @param $result
+     * @param \Consolidation\AnnotatedCommand\CommandData $commandData
+     */
     public function postInstallCommand($result, CommandData $commandData)
     {
-      // Remove the patch.
+        // Remove the patch.
         $this->corePatches($revert = true);
         $this->process(['git', 'checkout', $this->siteDirectory().'/settings.php'], $this->projectDirectory());
     }
 
-  /**
-   * Update the BurdaStyle backend code including translations.
-   *
-   * @command backend:update-code
-   *
-   * @options-backend
-   *
-   * @usage drush backend:update-code
-   *   Update code and translation files.
-   */
+    /**
+     * Update the BurdaStyle backend code including translations.
+     *
+     * @command backend:update-code
+     *
+     * @options-backend
+     *
+     * @usage drush backend:update-code
+     *   Update code and translation files.
+     */
     public function updateCode()
     {
         $this->process(['composer', 'update'], $this->projectDirectory());
         $this->process(['scripts/update-po.sh'], $this->projectDirectory());
     }
 
-  /**
-   * Update a BurdaStyle backend database for a specific site.
-   *
-   * @command backend:update-database
-   *
-   * @aliases backend:updb
-   *
-   * @options-backend
-   *
-   * @usage drush @elle backend:update-databases
-   *   Update the database for elle.
-   */
+    /**
+     * Update a BurdaStyle backend database for a specific site.
+     *
+     * @command backend:update-database
+     *
+     * @aliases backend:updb
+     *
+     * @options-backend
+     *
+     * @usage drush @elle backend:update-databases
+     *   Update the database for elle.
+     */
     public function updateDatabase()
     {
         $this->drush($this->selfRecord(), 'updatedb', [], ['yes' => $this->input()->getOption('yes')]);
@@ -123,41 +123,41 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         $this->drush($this->selfRecord(), 'locale-update', [], ['yes' => $this->input()->getOption('yes')]);
     }
 
-  /**
-   * Runs populateConfigSyncDirectory() for backend:config-export.
-   *
-   * As long as we have to handle environment specific config, this can not
-   * be a post command for the default drush config:import command.
-   *
-   * TODO: Revisit when we do not need the local- and testing-environment config
-   * TODO: folder anymore. Then decide if we can make this a post command for config:*.
-   *
-   * @hook pre-command backend:config-export
-   *
-   * @param \Consolidation\AnnotatedCommand\CommandData $commandData
-   */
+    /**
+     * Runs populateConfigSyncDirectory() for backend:config-export.
+     *
+     * As long as we have to handle environment specific config, this can not
+     * be a post command for the default drush config:import command.
+     *
+     * TODO: Revisit when we do not need the local- and testing-environment config
+     * TODO: folder anymore. Then decide if we can make this a post command for config:*.
+     *
+     * @hook pre-command backend:config-export
+     *
+     * @param \Consolidation\AnnotatedCommand\CommandData $commandData
+     */
     public function preConfigExportCommand(CommandData $commandData)
     {
         $this->populateConfigSyncDirectory();
     }
 
-  /**
-   * Export configuration of BurdaStyle backend site.
-   *
-   * TODO: Revisit when we do not need the local- and testing-environment config
-   * TODO: folder anymore. Then decide if we can make this a post command for config:export.
-   *
-   * @command backend:config-export
-   *
-   * @aliases backend:cex
-   *
-   * @options-backend
-   *
-   * @usage drush @elle backend:config-export
-   *   Exports the elle configuration.
-   *
-   * @bootstrap config
-   */
+    /**
+     * Export configuration of BurdaStyle backend site.
+     *
+     * TODO: Revisit when we do not need the local- and testing-environment config
+     * TODO: folder anymore. Then decide if we can make this a post command for config:export.
+     *
+     * @command backend:config-export
+     *
+     * @aliases backend:cex
+     *
+     * @options-backend
+     *
+     * @usage drush @elle backend:config-export
+     *   Exports the elle configuration.
+     *
+     * @bootstrap config
+     */
     public function configExport()
     {
         if ($this->environment !== 'prod') {
@@ -166,24 +166,24 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
             return;
         }
 
-      // export the config into the export folder.
+        // export the config into the export folder.
         $this->drush($this->selfRecord(), 'config:export', [], ['yes' => $this->input()->getOption('yes')]);
     }
 
-  /**
-   * Move files from sync folder to shared or override folders.
-   *
-   * As long as we have to handle environment specific config, this can not
-   * be a post command for the default drush config:import command.
-   *
-   * TODO: Revisit when we do not need the local- and testing-environment config
-   * TODO: folder anymore. Then decide if we can make this a post command for config:export.
-   *
-   * @hook post-command backend:config-export
-   *
-   * @param $result
-   * @param \Consolidation\AnnotatedCommand\CommandData $commandData
-   */
+    /**
+     * Move files from sync folder to shared or override folders.
+     *
+     * As long as we have to handle environment specific config, this can not
+     * be a post command for the default drush config:import command.
+     *
+     * TODO: Revisit when we do not need the local- and testing-environment config
+     * TODO: folder anymore. Then decide if we can make this a post command for config:export.
+     *
+     * @hook post-command backend:config-export
+     *
+     * @param $result
+     * @param \Consolidation\AnnotatedCommand\CommandData $commandData
+     */
     public function postConfigExportCommand($result, CommandData $commandData)
     {
         $exportedFiles = $this->getConfigFilesInDirectory($this->siteConfigSyncDirectory());
@@ -193,8 +193,8 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         $modifiedFiles = [];
 
         foreach ($exportedFiles as $fileName => $fullPath) {
-          // First check, if the file should be put into the override directory.
-          // otherwise check, if the file should be put into the shared directory.
+            // First check, if the file should be put into the override directory.
+            // otherwise check, if the file should be put into the shared directory.
             if (isset($overrideFiles[$fileName])) {
                 if (!$this->filesAreEqual($overrideFiles[$fileName], $fullPath)) {
                     $this->filesystem->copy($fullPath, $overrideFiles[$fileName], true);
@@ -208,22 +208,22 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
             }
         }
 
-      // Give information to the user, when we modified a configuration that also exists in local config.
-      // TODO: revisit, when local config folder has been removed.
+        // Give information to the user, when we modified a configuration that also exists in local config.
+        // TODO: revisit, when local config folder has been removed.
         foreach ($modifiedFiles as $fileName => $fullPath) {
             if (isset($localFiles[$fileName])) {
                 $this->io()->block('Configuration file "'.$fileName.'" was changed and exists in local config folder. Please check, if local config has to be manually modified.', 'INFO', 'fg=yellow');
             }
         }
 
-      // Remove files from override, that were not exported anymore.
+        // Remove files from override, that were not exported anymore.
         foreach ($overrideFiles as $fileName => $fullPath) {
             if (!isset($exportedFiles[$fileName])) {
                 $this->filesystem->remove($fullPath);
             }
         }
 
-      // Remove files from shared, that were not exported anymore.
+        // Remove files from shared, that were not exported anymore.
         foreach ($sharedFiles as $fileName => $fullPath) {
             if (!isset($exportedFiles[$fileName])) {
                 $this->filesystem->remove($fullPath);
@@ -231,63 +231,63 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         }
     }
 
-  /**
-   * Runs populateConfigSyncDirectory() for backend:config-import.
-   *
-   * As long as we have to handle environment specific config, this can not
-   * be a post command for the default drush config:import command.
-   *
-   * TODO: Revisit when we do not need the local- and testing-environment config
-   * TODO: folder anymore. Then decide if we can make this a post command for config:*.
-   *
-   * @hook pre-command backend:config-import
-   *
-   * @param \Consolidation\AnnotatedCommand\CommandData $commandData
-   */
+    /**
+     * Runs populateConfigSyncDirectory() for backend:config-import.
+     *
+     * As long as we have to handle environment specific config, this can not
+     * be a post command for the default drush config:import command.
+     *
+     * TODO: Revisit when we do not need the local- and testing-environment config
+     * TODO: folder anymore. Then decide if we can make this a post command for config:*.
+     *
+     * @hook pre-command backend:config-import
+     *
+     * @param \Consolidation\AnnotatedCommand\CommandData $commandData
+     */
     public function preConfigImportCommand(CommandData $commandData)
     {
         $this->populateConfigSyncDirectory();
     }
 
-  /**
-   * Import configuration of BurdaStyle backend site.
-   *
-   * This is simple wrapper to default the config:import command. it is only
-   * until we can get rid of the environment specific config directories
-   * (local and testing).
-   *
-   * TODO: Revisit when we do not need local and testing anymore. Then we can
-   * TODO: delete this command and change the preConfigImportCommand to hook
-   * TODO: to the default config:import command.
-   *
-   * @command backend:config-import
-   *
-   * @aliases backend:cim
-   *
-   * @options-backend
-   *
-   * @usage drush @elle backend:config-import
-   *   Exports the elle configuration.
-   *
-   * @bootstrap config
-   */
+    /**
+     * Import configuration of BurdaStyle backend site.
+     *
+     * This is simple wrapper to default the config:import command. it is only
+     * until we can get rid of the environment specific config directories
+     * (local and testing).
+     *
+     * TODO: Revisit when we do not need local and testing anymore. Then we can
+     * TODO: delete this command and change the preConfigImportCommand to hook
+     * TODO: to the default config:import command.
+     *
+     * @command backend:config-import
+     *
+     * @aliases backend:cim
+     *
+     * @options-backend
+     *
+     * @usage drush @elle backend:config-import
+     *   Exports the elle configuration.
+     *
+     * @bootstrap config
+     */
     public function configImport()
     {
         $this->drush($this->selfRecord(), 'config:import', [], ['yes' => $this->input()->getOption('yes')]);
     }
 
-  /**
-   * Prepare an update branch. Does code update, database update and config export.
-   *
-   * @command backend:prepare-update-branch
-   *
-   * @options-backend
-   *
-   * @usage drush backend:prepare-update-branch
-   *   Updates code and all configurations for all sites.
-   * @usage drush @elle backend:prepare-update-branch
-   *   Updates code and configurations for the site elle only.
-   */
+    /**
+     * Prepare an update branch. Does code update, database update and config export.
+     *
+     * @command backend:prepare-update-branch
+     *
+     * @options-backend
+     *
+     * @usage drush backend:prepare-update-branch
+     *   Updates code and all configurations for all sites.
+     * @usage drush @elle backend:prepare-update-branch
+     *   Updates code and configurations for the site elle only.
+     */
     public function prepareUpdateBranch()
     {
         if ($this->selfRecord()->name() === '@self') {
@@ -296,41 +296,41 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
             $aliases = [$this->selfRecord()->name()];
         }
 
-      // First install all sites with current code base.
+        // First install all sites with current code base.
         $this->process(['composer', 'install'], $this->projectDirectory());
 
-      // We use ::process() instead of ::drush() in the following drush calls
-      // to be able to provide the @alias. with ::drush, this would be translated
-      // into --uri=http://domain.site, which we do not handle in code.
+        // We use ::process() instead of ::drush() in the following drush calls
+        // to be able to provide the @alias. with ::drush, this would be translated
+        // into --uri=http://domain.site, which we do not handle in code.
         foreach ($aliases as $alias) {
-          // Install from config.
+            // Install from config.
             $this->process(['drush', $alias, 'backend:install'] + $this->getOptions(), $this->projectDirectory());
         }
 
-      // Update codebase and translation files
+        // Update codebase and translation files
         $this->process(['drush', 'backend:update-code'] + $this->getOptions(), $this->projectDirectory());
 
-      // Update database and export config for all sites.
+        // Update database and export config for all sites.
         foreach ($aliases as $alias) {
             $this->process(['drush', $alias, 'backend:update-database'] + $this->getOptions(), $this->projectDirectory());
             $this->process(['drush', $alias, 'backend:config-export'] + $this->getOptions(), $this->projectDirectory());
         }
     }
 
-  /**
-   * Creates a phpunit database generation script.
-   *
-   * @command backend:create-testing-dump
-   *
-   * @aliases backend:dump
-   *
-   * @options-backend
-   *
-   * @usage drush @elle backend:create-testing-dump
-   *   Creates a phpunit database generation script for the site elle.
-   *
-   * @bootstrap config
-   */
+    /**
+     * Creates a phpunit database generation script.
+     *
+     * @command backend:create-testing-dump
+     *
+     * @aliases backend:dump
+     *
+     * @options-backend
+     *
+     * @usage drush @elle backend:create-testing-dump
+     *   Creates a phpunit database generation script for the site elle.
+     *
+     * @bootstrap config
+     */
     public function createTestingDump()
     {
         $sql = SqlBase::create();
@@ -340,11 +340,11 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         $this->process(['php', 'core/scripts/db-tools.php', 'dump-database-d8-mysql', '--database-url', $dbUrl], $this->drupalRootDirectory());
     }
 
-  /**
-   * Gets a cleaned up array of $key=$value strings from the input options.
-   *
-   * @return string[]
-   */
+    /**
+     * Gets a cleaned up array of $key=$value strings from the input options.
+     *
+     * @return string[]
+     */
     protected function getOptions()
     {
         $options = [];
@@ -357,12 +357,11 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         return $options;
     }
 
-  /**
-   * Prepare the config/{site}/sync for being used by site-install, config-export and config-import.
-   *
-   * This is necessary, because config files are distributed to different
-   * folders.
-   */
+    /**
+     * Prepare the config/{site}/sync for being used by site-install, config-export and config-import.
+     *
+     * This is necessary, because config files are distributed to different folders.
+     */
     protected function populateConfigSyncDirectory(): void
     {
         $syncDirectory = $this->siteConfigSyncDirectory();
@@ -370,9 +369,9 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         $sharedFiles = $this->getConfigFilesInDirectory($this->configSharedDirectory());
         $overrideFiles = $this->getConfigFilesInDirectory($this->siteConfigOverrideDirectory());
 
-      // Prepare config-sync directory for site install with existing config.
-      // First cleanjup the directory and copy shared config into
-      // config/{site}/sync, then overwrite this with files from config/{site}/override.
+        // Prepare config-sync directory for site install with existing config.
+        // First clean up the directory and copy shared config into
+        // config/{site}/sync, then overwrite this with files from config/{site}/override.
         $this->filesystem->remove($syncFiles);
         foreach ($sharedFiles as $fileName => $fullPath) {
             $this->filesystem->copy($fullPath, $syncDirectory.'/'.$fileName, true);
@@ -388,17 +387,17 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         }
     }
 
-  /**
-   * Apply or revoke patches to drupal core.
-   *
-   * @param bool $revert
-   */
+    /**
+     * Apply or revoke patches to drupal core.
+     *
+     * @param bool $revert
+     */
     protected function corePatches(bool $revert = false)
     {
         $patches = [
-        'https://www.drupal.org/files/issues/2020-09-14/3169756-2-11.patch',
-        'https://www.drupal.org/files/issues/2020-06-03/2488350-3-98.patch',
-        'https://www.drupal.org/files/issues/2020-07-17/3086307-48.patch',
+            'https://www.drupal.org/files/issues/2020-09-14/3169756-2-11.patch',
+            'https://www.drupal.org/files/issues/2020-06-03/2488350-3-98.patch',
+            'https://www.drupal.org/files/issues/2020-07-17/3086307-48.patch',
         ];
 
         $command = ['patch', '-p1', '--silent'];
@@ -418,14 +417,14 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         }
     }
 
-  /**
-   * Get all config files in a given directory.
-   *
-   * @param $directory
-   *   The directory to find config files in.
-   * @return string[]
-   *   The filenames of found config files.
-   */
+    /**
+     * Get all config files in a given directory.
+     *
+     * @param $directory
+     *   The directory to find config files in.
+     * @return string[]
+     *   The filenames of found config files.
+     */
     private function getConfigFilesInDirectory($directory)
     {
         if ($this->filesystem->exists($directory) === false) {
@@ -434,8 +433,8 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
 
         $configFiles = [];
 
-      // Finder does not reset its internal state, we need a new instance
-      // everytime we use it.
+        // Finder does not reset its internal state, we need a new instance
+        // everytime we use it.
         $finder = new Finder();
 
         foreach ($finder->files()->name('*.yml')->in($directory) as $file) {
@@ -445,14 +444,14 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         return $configFiles;
     }
 
-  /**
-   * Check if two file have the same content.
-   *
-   * @param $firstFile
-   * @param $secondFile
-   *
-   * @return bool
-   */
+    /**
+     * Check if two file have the same content.
+     *
+     * @param $firstFile
+     * @param $secondFile
+     *
+     * @return bool
+     */
     private function filesAreEqual($firstFile, $secondFile): bool
     {
         if (filesize($firstFile) !== filesize($secondFile)) {

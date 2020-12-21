@@ -24,11 +24,11 @@ trait BackendCommandsTrait
      * @var string[]
      */
     private $siteDomainDirectoryMapping = [
-      '@elle.dev' => 'elle.de',
-      '@esquire.dev' => 'esquire.de',
-      '@freundin.dev' => 'freundin.de',
-      '@harpersbazaar.dev' => 'harpersbazaar.de',
-      '@instyle.dev' => 'instyle.de',
+        '@elle.dev' => 'elle.de',
+        '@esquire.dev' => 'esquire.de',
+        '@freundin.dev' => 'freundin.de',
+        '@harpersbazaar.dev' => 'harpersbazaar.de',
+        '@instyle.dev' => 'instyle.de',
     ];
 
     /**
