@@ -227,6 +227,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         foreach ($sharedFiles as $fileName => $fullPath) {
             if (!isset($exportedFiles[$fileName])) {
                 $this->filesystem->remove($fullPath);
+                $this->io()->block('Configuration file "'.$fileName.'" was removed from the shared folder. Please check, if overridden config in other sub-sites has to be manually modified or deleted.', 'INFO', 'fg=yellow');
             }
         }
     }
