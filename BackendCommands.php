@@ -237,11 +237,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
             }
         }
         if (count($modifiedFiles)) {
-            $this->io()->block(
-              'Check all config files if they have been moved to the correct location!',
-              'INFO',
-              'fg=yellow'
-            );
+            $this->io()->block('Check all config files if they have been moved to the correct location!','INFO', 'fg=yellow');
         }
     }
 
