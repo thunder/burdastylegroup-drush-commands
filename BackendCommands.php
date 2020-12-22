@@ -236,8 +236,13 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
                 $this->io()->block('Configuration file "'.$fileName.'" was removed from the shared folder. Please check, if overridden config in other sub-sites has to be manually modified or deleted.', 'INFO', 'fg=yellow');
             }
         }
-
-        $this->io()->block('Check all config files if they have been moved to the correct location!', 'INFO', 'fg=yellow');
+        if (count($modifiedFiles)) {
+            $this->io()->block(
+              'Check all config files if they have been moved to the correct location!',
+              'INFO',
+              'fg=yellow'
+            );
+        }
     }
 
     /**
