@@ -195,6 +195,8 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         foreach ($exportedFiles as $fileName => $fullPath) {
             // First check, if the file should be put into the override directory.
             // otherwise check, if the file should be put into the shared directory.
+            // Finally, if file is new (neither in shared nor in override),
+            // put it into override and inform user of new config.
             if (isset($overrideFiles[$fileName])) {
                 if (!$this->filesAreEqual($overrideFiles[$fileName], $fullPath)) {
                     $this->filesystem->copy($fullPath, $overrideFiles[$fileName], true);
@@ -205,6 +207,9 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
                     $this->filesystem->copy($fullPath, $sharedFiles[$fileName], true);
                     $modifiedFiles[$fileName] = $fullPath;
                 }
+            } else {
+                $this->filesystem->copy($fullPath, $overrideFiles[$fileName]);
+                $this->io()->block('New configuration file "'.$fileName.'" was added to override folder. Please check, if that is the correct location.', 'INFO', 'fg=yellow');
             }
         }
 
@@ -230,6 +235,8 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
                 $this->io()->block('Configuration file "'.$fileName.'" was removed from the shared folder. Please check, if overridden config in other sub-sites has to be manually modified or deleted.', 'INFO', 'fg=yellow');
             }
         }
+
+        $this->io()->block('Check all config files if they have been moved to the correct location!', 'INFO', 'fg=yellow');
     }
 
     /**
