@@ -208,8 +208,9 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
                     $modifiedFiles[$fileName] = $fullPath;
                 }
             } else {
-                $this->filesystem->copy($fullPath, $overrideFiles[$fileName]);
+                $this->filesystem->copy($fullPath, $this->siteConfigOverrideDirectory() . '/' . $fileName);
                 $this->io()->block('New configuration file "'.$fileName.'" was added to override folder. Please check, if that is the correct location.', 'INFO', 'fg=yellow');
+                $modifiedFiles[$fileName] = $fullPath;
             }
         }
 
