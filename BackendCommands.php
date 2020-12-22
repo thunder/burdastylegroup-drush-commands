@@ -129,8 +129,8 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      * As long as we have to handle environment specific config, this can not
      * be a post command for the default drush config:import command.
      *
-     * TODO: Revisit when we do not need the local- and testing-environment config
-     * TODO: folder anymore. Then decide if we can make this a post command for config:*.
+     * TODO: Revisit when we do not need the local environment config folder anymore.
+     * TODO: Then decide if we can make this a post command for config:*.
      *
      * @hook pre-command backend:config-export
      *
@@ -144,8 +144,8 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     /**
      * Export configuration of BurdaStyle backend site.
      *
-     * TODO: Revisit when we do not need the local- and testing-environment config
-     * TODO: folder anymore. Then decide if we can make this a post command for config:export.
+     * TODO: Revisit when we do not need the local environment config folder anymore.
+     * TODO: Then decide if we can make this a post command for config:export.
      *
      * @command backend:config-export
      *
@@ -176,8 +176,8 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      * As long as we have to handle environment specific config, this can not
      * be a post command for the default drush config:import command.
      *
-     * TODO: Revisit when we do not need the local- and testing-environment config
-     * TODO: folder anymore. Then decide if we can make this a post command for config:export.
+     * TODO: Revisit when we do not need the local environment config folder anymore.
+     * TODO: Then decide if we can make this a post command for config:export.
      *
      * @hook post-command backend:config-export
      *
@@ -238,8 +238,8 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      * As long as we have to handle environment specific config, this can not
      * be a post command for the default drush config:import command.
      *
-     * TODO: Revisit when we do not need the local- and testing-environment config
-     * TODO: folder anymore. Then decide if we can make this a post command for config:*.
+     * TODO: Revisit when we do not need the local environment config folder anymore.
+     * TODO: Then decide if we can make this a post command for config:*.
      *
      * @hook pre-command backend:config-import
      *
@@ -257,7 +257,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      * until we can get rid of the environment specific config directories
      * (local and testing).
      *
-     * TODO: Revisit when we do not need local and testing anymore. Then we can
+     * TODO: Revisit when we do not need local config folder anymore. Then we can
      * TODO: delete this command and change the preConfigImportCommand to hook
      * TODO: to the default config:import command.
      *
