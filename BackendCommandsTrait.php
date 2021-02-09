@@ -86,7 +86,12 @@ trait BackendCommandsTrait
          * @var \Consolidation\SiteProcess\SiteProcess $process
          */
         $process = $this->processManager()->drush($siteAlias, $command, $args, $options, $optionsDoubleDash);
-        $process->setTty(true);
+
+        $isTtySupported = (bool) @proc_open('echo 1 >/dev/null', [['file', '/dev/tty', 'r'], ['file', '/dev/tty', 'w'], ['file', '/dev/tty', 'w']], $pipes);
+        if ($isTtySupported) {
+            // This allows us to ask user for confirmation, if --yes option was not given.
+            $process->setTty(true);
+        }
         $process->mustRun($process->showRealtime());
     }
 
