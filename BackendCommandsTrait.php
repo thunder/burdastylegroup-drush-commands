@@ -89,6 +89,7 @@ trait BackendCommandsTrait
 
         $isTtySupported = (bool) @proc_open('echo 1 >/dev/null', [['file', '/dev/tty', 'r'], ['file', '/dev/tty', 'w'], ['file', '/dev/tty', 'w']], $pipes);
         if ($isTtySupported) {
+          // This allows us to ask user for confirmation, if --yes option was not given.
           $process->setTty(TRUE);
         }
         $process->mustRun($process->showRealtime());
