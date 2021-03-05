@@ -13,24 +13,26 @@ use Symfony\Component\Console\Input\ArrayInput;
  */
 class LocalDevCommands extends DrushCommands implements SiteAliasManagerAwareInterface
 {
-  use SiteAliasManagerAwareTrait;
+    use SiteAliasManagerAwareTrait;
 
-  /**
-   * Enable modules that are excluded from config export.
-   *
-   * @bootstrap full
-   * @command backend:enable-dev-modules
-   */
-  public function enableDevModules() {
-    $modules = Settings::get('config_exclude_modules', []);
+    /**
+     * Enable modules that are excluded from config export.
+     *
+     * @bootstrap full
+     *
+     * @command backend:enable-dev-modules
+     */
+    public function enableDevModules()
+    {
+        $modules = Settings::get('config_exclude_modules', []);
 
-    if (!count($modules)) {
-      $this->logger()->warning('No modules defined in $settings[\'config_exclude_modules\'].');
-      return;
+        if (!count($modules)) {
+            $this->logger()->warning('No modules defined in $settings[\'config_exclude_modules\'].');
+
+            return;
+        }
+
+        $process = $this->processManager()->drush($this->siteAliasManager()->getSelf(), 'pm:enable', $modules, Drush::redispatchOptions());
+        $process->mustRun($process->showRealtime());
     }
-
-    $process = $this->processManager()
-      ->drush($this->siteAliasManager()->getSelf(), 'pm:enable', $modules, Drush::redispatchOptions());
-    $process->mustRun($process->showRealtime());
-  }
 }
