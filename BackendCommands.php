@@ -2,8 +2,10 @@
 
 namespace Drush\Commands\BurdaStyleGroup;
 
+use Drupal\Core\Site\Settings;
 use Consolidation\AnnotatedCommand\CommandData;
 use Drush\Commands\DrushCommands;
+use Drush\Drush;
 use Drush\SiteAlias\SiteAliasManagerAwareInterface;
 use Drush\Sql\SqlBase;
 use Symfony\Component\Filesystem\Filesystem;
@@ -348,6 +350,29 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         $dbUrl = $dbSpec['driver'].'://'.$dbSpec['username'].':'.$dbSpec['password'].'@'.$dbSpec['host'].':'.$dbSpec['port'].'/'.$dbSpec['database'];
 
         $this->process(['php', 'core/scripts/db-tools.php', 'dump-database-d8-mysql', '--database-url', $dbUrl], $this->drupalRootDirectory());
+    }
+
+    /**
+     * Enable modules that are excluded from config export.
+     *
+     * @command backend:enable-dev-modules
+     *
+     * @options-backend
+     *
+     * @bootstrap full
+     */
+    public function enableDevModules()
+    {
+        $modules = Settings::get('config_exclude_modules', []);
+
+        if (!count($modules)) {
+            $this->logger()->warning('No modules defined in $settings[\'config_exclude_modules\'].');
+
+            return;
+        }
+
+        $process = $this->processManager()->drush($this->siteAliasManager()->getSelf(), 'pm:enable', $modules, Drush::redispatchOptions());
+        $process->mustRun($process->showRealtime());
     }
 
     /**
