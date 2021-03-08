@@ -2,12 +2,16 @@
 
 namespace Drush\Commands\BurdaStyleGroup;
 
+use Consolidation\AnnotatedCommand\AnnotationData;
 use Drupal\Core\Site\Settings;
 use Consolidation\AnnotatedCommand\CommandData;
 use Drush\Commands\DrushCommands;
 use Drush\Drush;
 use Drush\SiteAlias\SiteAliasManagerAwareInterface;
 use Drush\Sql\SqlBase;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Finder\Finder;
 
@@ -126,62 +130,50 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     }
 
     /**
-     * Runs populateConfigSyncDirectory() for backend:config-export.
+     * Add option to command.
      *
-     * As long as we have to handle environment specific config, this can not
-     * be a post command for the default drush config:import command.
+     * @hook option config:export
      *
-     * TODO: Revisit when we do not need the local environment config folder anymore.
-     * TODO: Then decide if we can make this a post command for config:*.
-     *
-     * @hook pre-command backend:config-export
-     *
-     * @param \Consolidation\AnnotatedCommand\CommandData $commandData
+     * @param \Symfony\Component\Console\Command\Command     $command
+     * @param \Consolidation\AnnotatedCommand\AnnotationData $annotationData
      */
+    public function additionalConfigExportOption(Command $command, AnnotationData $annotationData)
+    {
+        $command->addOption(
+            'project-directory',
+            '',
+            InputOption::VALUE_NONE,
+            'The base directory of the project. Defaults to composer root of project. Option added by burdastyle backend commands.'
+        );
+    }
+
+    /**
+     * @hook init config:export
+     *
+     * @param \Symfony\Component\Console\Input\InputInterface $input
+     * @param \Consolidation\AnnotatedCommand\AnnotationData  $annotationData
+     */
+    public function initConfigExportCommand(InputInterface $input, AnnotationData $annotationData)
+    {
+        $this->initCommands($input, $annotationData);
+    }
+
+    /**
+       * Runs populateConfigSyncDirectory() for backend:config-export.
+       *
+       * @hook pre-command config:export
+       *
+       * @param \Consolidation\AnnotatedCommand\CommandData $commandData
+       */
     public function preConfigExportCommand(CommandData $commandData)
     {
         $this->populateConfigSyncDirectory();
     }
 
     /**
-     * Export configuration of BurdaStyle backend site.
-     *
-     * TODO: Revisit when we do not need the local environment config folder anymore.
-     * TODO: Then decide if we can make this a post command for config:export.
-     *
-     * @command backend:config-export
-     *
-     * @aliases backend:cex
-     *
-     * @options-backend
-     *
-     * @usage drush @elle backend:config-export
-     *   Exports the elle configuration.
-     *
-     * @bootstrap config
-     */
-    public function configExport()
-    {
-        if ($this->environment !== 'prod') {
-            $this->logger()->error('Only production will be exported. Current environment is "%environment".', ['%environment' => $this->environment]);
-
-            return;
-        }
-
-        // export the config into the export folder.
-        $this->drush($this->selfRecord(), 'config:export', [], ['yes' => $this->input()->getOption('yes')]);
-    }
-
-    /**
      * Move files from sync folder to shared or override folders.
      *
-     * As long as we have to handle environment specific config, this can not
-     * be a post command for the default drush config:import command.
-     *
-     * TODO: Revisit when we do not need the local environment config folder anymore.
-     * TODO: Then decide if we can make this a post command for config:export.
-     *
-     * @hook post-command backend:config-export
+     * @hook post-command config:export
      *
      * @param $result
      * @param \Consolidation\AnnotatedCommand\CommandData $commandData
@@ -191,7 +183,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         $exportedFiles = $this->getConfigFilesInDirectory($this->siteConfigSyncDirectory());
         $overrideFiles = $this->getConfigFilesInDirectory($this->siteConfigOverrideDirectory());
         $sharedFiles = $this->getConfigFilesInDirectory($this->configSharedDirectory());
-        $localFiles = $this->getConfigFilesInDirectory($this->siteConfigEnvironmentDirectory('local'));
         $modifiedFiles = [];
 
         foreach ($exportedFiles as $fileName => $fullPath) {
@@ -216,14 +207,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
             }
         }
 
-        // Give information to the user, when we modified a configuration that also exists in local config.
-        // TODO: revisit, when local config folder has been removed.
-        foreach ($modifiedFiles as $fileName => $fullPath) {
-            if (isset($localFiles[$fileName])) {
-                $this->io()->block('Configuration file "'.$fileName.'" was changed and exists in local config folder. Please check, if local config has to be manually modified.', 'INFO', 'fg=yellow');
-            }
-        }
-
         // Remove files from override, that were not exported anymore.
         foreach ($overrideFiles as $fileName => $fullPath) {
             if (!isset($exportedFiles[$fileName])) {
@@ -244,15 +227,9 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     }
 
     /**
-     * Runs populateConfigSyncDirectory() for backend:config-import.
+     * Runs populateConfigSyncDirectory() for config:import.
      *
-     * As long as we have to handle environment specific config, this can not
-     * be a post command for the default drush config:import command.
-     *
-     * TODO: Revisit when we do not need the local environment config folder anymore.
-     * TODO: Then decide if we can make this a post command for config:*.
-     *
-     * @hook pre-command backend:config-import
+     * @hook pre-command config:import
      *
      * @param \Consolidation\AnnotatedCommand\CommandData $commandData
      */
@@ -262,31 +239,34 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     }
 
     /**
-     * Import configuration of BurdaStyle backend site.
+     * Add option to command.
      *
-     * This is simple wrapper to default the config:import command. it is only
-     * until we can get rid of the environment specific config directories
-     * (local and testing).
+     * @hook option config:import
      *
-     * TODO: Revisit when we do not need local config folder anymore. Then we can
-     * TODO: delete this command and change the preConfigImportCommand to hook
-     * TODO: to the default config:import command.
-     *
-     * @command backend:config-import
-     *
-     * @aliases backend:cim
-     *
-     * @options-backend
-     *
-     * @usage drush @elle backend:config-import
-     *   Exports the elle configuration.
-     *
-     * @bootstrap config
+     * @param \Symfony\Component\Console\Command\Command     $command
+     * @param \Consolidation\AnnotatedCommand\AnnotationData $annotationData
      */
-    public function configImport()
+    public function additionalConfigImportOption(Command $command, AnnotationData $annotationData)
     {
-        $this->drush($this->selfRecord(), 'config:import', [], ['yes' => $this->input()->getOption('yes')]);
+        $command->addOption(
+            'project-directory',
+            '',
+            InputOption::VALUE_NONE,
+            'The base directory of the project. Defaults to composer root of project. Option added by burdastyle backend commands.'
+        );
     }
+
+    /**
+     * @hook init config:import
+     *
+     * @param \Symfony\Component\Console\Input\InputInterface $input
+     * @param \Consolidation\AnnotatedCommand\AnnotationData  $annotationData
+     */
+    public function initConfigImportCommand(InputInterface $input, AnnotationData $annotationData)
+    {
+        $this->initCommands($input, $annotationData);
+    }
+
 
     /**
      * Prepare an update branch. Does code update, database update and config export.
@@ -413,12 +393,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         }
         foreach ($overrideFiles as $fileName => $fullPath) {
             $this->filesystem->copy($fullPath, $syncDirectory.'/'.$fileName, true);
-        }
-        if ($this->filesystem->exists($this->siteConfigEnvironmentDirectory($this->environment))) {
-            $environmentFiles = $this->getConfigFilesInDirectory($this->siteConfigEnvironmentDirectory($this->environment));
-            foreach ($environmentFiles as $fileName => $fullPath) {
-                $this->filesystem->copy($fullPath, $syncDirectory.'/'.$fileName, true);
-            }
         }
     }
 
