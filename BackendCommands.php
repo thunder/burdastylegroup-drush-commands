@@ -159,7 +159,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     }
 
     /**
-       * Runs populateConfigSyncDirectory() for backend:config-export.
+       * Runs populateConfigSyncDirectory() for config:export.
        *
        * @hook pre-command config:export
        *
@@ -305,7 +305,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         // Update database and export config for all sites.
         foreach ($aliases as $alias) {
             $this->process(['drush', $alias, 'backend:update-database'] + $this->getOptions(), $this->projectDirectory());
-            $this->process(['drush', $alias, 'backend:config-export'] + $this->getOptions(), $this->projectDirectory());
+            $this->process(['drush', $alias, 'config:export'] + $this->getOptions(), $this->projectDirectory());
         }
     }
 
