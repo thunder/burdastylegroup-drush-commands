@@ -37,11 +37,6 @@ trait BackendCommandsTrait
     private $projectDirectory;
 
     /**
-     * @var string
-     */
-    private $environment;
-
-    /**
      * @hook init
      *
      * @param \Symfony\Component\Console\Input\InputInterface $input
@@ -51,7 +46,6 @@ trait BackendCommandsTrait
     {
         // Initialize project directory.
         $this->projectDirectory = $input->getOption('project-directory') ?: Drush::bootstrapManager()->getComposerRoot();
-        $this->environment = $input->getOption('environment');
     }
 
     /**
@@ -59,13 +53,11 @@ trait BackendCommandsTrait
      *
      * @hook option @options-backend
      *
-     * @option project-directory The base directory of the project. Defaults to composer root of project .
-     * @option environment Choose environment the installation is built for, i.e. which config folders are used.
-     *   Possible values are "local", "testing" and "prod". (Defaults to "prod").
+     * @option project-directory The base directory of the project. Defaults to composer root of project.
      *
      * @param array $options
      */
-    public function optionsBackend($options = ['project-directory' => false, 'environment' => 'prod'])
+    public function optionsBackend($options = ['project-directory' => false])
     {
     }
 
@@ -114,18 +106,13 @@ trait BackendCommandsTrait
 
     /**
      * The base project directory, where most commands will be executed from.
+     * Defaults to composer root of project-
      *
-     * @return \Consolidation\AnnotatedCommand\CommandError|string
+     * @return string
      */
     protected function projectDirectory(): string
     {
-        if (isset($this->projectDirectory)) {
-            return $this->projectDirectory;
-        }
-
-        $msg = dt('The project directory has not been set.');
-
-        return new CommandError($msg);
+        return $this->projectDirectory;
     }
 
     /**
@@ -191,18 +178,6 @@ trait BackendCommandsTrait
     protected function siteConfigOverrideDirectory(): string
     {
         return $this->siteConfigSyncDirectory().'/../override';
-    }
-
-    /**
-     * The directory, where site specific configuration for the current environment is placed.
-     *
-     * @param string $environment
-     *  The environment to get the config directory for.
-     * @return string
-     */
-    protected function siteConfigEnvironmentDirectory(string $environment): string
-    {
-        return $this->siteConfigSyncDirectory().'/../'.$environment;
     }
 
     /**
