@@ -406,7 +406,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         $patches = [
             'https://www.drupal.org/files/issues/2020-09-14/3169756-2-11.patch',
             'https://www.drupal.org/files/issues/2020-06-03/2488350-3-98.patch',
-            'https://www.drupal.org/files/issues/2020-07-17/3086307-48.patch',
         ];
 
         $command = ['patch', '-p1', '--silent'];
