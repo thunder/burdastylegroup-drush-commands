@@ -48,9 +48,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     public function preInstallCommand(CommandData $commandData)
     {
         $this->populateConfigSyncDirectory();
-
-        // Apply core patches
-        $this->corePatches();
     }
 
     /**
@@ -89,8 +86,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      */
     public function postInstallCommand($result, CommandData $commandData)
     {
-        // Remove the patch.
-        $this->corePatches($revert = true);
         $this->process(['git', 'checkout', $this->siteDirectory().'/settings.php'], $this->projectDirectory());
     }
 
@@ -393,35 +388,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         }
         foreach ($overrideFiles as $fileName => $fullPath) {
             $this->filesystem->copy($fullPath, $syncDirectory.'/'.$fileName, true);
-        }
-    }
-
-    /**
-     * Apply or revoke patches to drupal core.
-     *
-     * @param bool $revert
-     */
-    protected function corePatches(bool $revert = false)
-    {
-        $patches = [
-            'https://www.drupal.org/files/issues/2020-09-14/3169756-2-11.patch',
-            'https://www.drupal.org/files/issues/2020-06-03/2488350-3-98.patch',
-        ];
-
-        $command = ['patch', '-p1', '--silent'];
-        if ($revert) {
-            $command[] = '-R';
-            $patches = array_reverse($patches);
-        }
-
-        foreach ($patches as $patch) {
-            $stream = fopen($patch, 'r');
-            try {
-                $this->process($command, $this->drupalRootDirectory(), null, $stream);
-            } catch (\Exception $e) {
-                $this->logger()->info('A patch was not applied correctly, continuing without this patch.');
-            }
-            fclose($stream);
         }
     }
 
