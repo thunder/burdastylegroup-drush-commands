@@ -48,7 +48,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     public function preInstallCommand(CommandData $commandData)
     {
         $this->populateConfigSyncDirectory();
-
     }
 
     /**
