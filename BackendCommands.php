@@ -98,10 +98,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      */
     public function install()
     {
-        // Cleanup existing installation.
-        $this->drush($this->selfRecord(), 'sql-create', [], ['yes' => $this->input()->getOption('yes')]);
-        $this->drush($this->selfRecord(), 'cache:rebuild');
-
         // Do the site install
         $this->drush($this->selfRecord(), 'site:install', [], ['existing-config' => true, 'yes' => $this->input()->getOption('yes')]);
     }
