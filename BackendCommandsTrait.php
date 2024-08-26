@@ -26,6 +26,7 @@ trait BackendCommandsTrait
     private $siteDomainDirectoryMapping = [
         '@elle.dev' => 'elle.de',
         '@esquire.dev' => 'esquire.de',
+        '@focusplus.dev' => 'focusplus.de',
         '@freundin.dev' => 'freundin.de',
         '@harpersbazaar.dev' => 'harpersbazaar.de',
         '@instyle.dev' => 'instyle.de',
