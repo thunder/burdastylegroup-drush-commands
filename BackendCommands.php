@@ -127,12 +127,12 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     /**
      * Add option to command.
      *
-     * @hook option config:export
+     * @hook option backend:create-testing-dump backend:install config:export config:import
      *
      * @param \Symfony\Component\Console\Command\Command     $command
      * @param \Consolidation\AnnotatedCommand\AnnotationData $annotationData
      */
-    public function additionalConfigExportOption(Command $command, AnnotationData $annotationData)
+    public function additionalBackendOptions(Command $command, AnnotationData $annotationData)
     {
         $command->addOption(
             'project-directory',
@@ -143,12 +143,12 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     }
 
     /**
-     * @hook init config:export
+     * @hook init backend:create-testing-dump backend:install config:export config:import
      *
      * @param \Symfony\Component\Console\Input\InputInterface $input
      * @param \Consolidation\AnnotatedCommand\AnnotationData  $annotationData
      */
-    public function initConfigExportCommand(InputInterface $input, AnnotationData $annotationData)
+    public function initBackendCommands(InputInterface $input, AnnotationData $annotationData)
     {
         $this->initCommands($input, $annotationData);
     }
@@ -232,36 +232,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     {
         $this->populateConfigSyncDirectory();
     }
-
-    /**
-     * Add option to command.
-     *
-     * @hook option config:import
-     *
-     * @param \Symfony\Component\Console\Command\Command     $command
-     * @param \Consolidation\AnnotatedCommand\AnnotationData $annotationData
-     */
-    public function additionalConfigImportOption(Command $command, AnnotationData $annotationData)
-    {
-        $command->addOption(
-            'project-directory',
-            '',
-            InputOption::VALUE_NONE,
-            'The base directory of the project. Defaults to composer root of project. Option added by burdastyle backend commands.'
-        );
-    }
-
-    /**
-     * @hook init config:import
-     *
-     * @param \Symfony\Component\Console\Input\InputInterface $input
-     * @param \Consolidation\AnnotatedCommand\AnnotationData  $annotationData
-     */
-    public function initConfigImportCommand(InputInterface $input, AnnotationData $annotationData)
-    {
-        $this->initCommands($input, $annotationData);
-    }
-
 
     /**
      * Prepare an update branch. Does code update, database update and config export.
