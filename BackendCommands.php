@@ -39,6 +39,36 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     }
 
     /**
+     * @hook init @options-backend
+     *
+     * @param \Symfony\Component\Console\Input\InputInterface $input
+     * @param \Consolidation\AnnotatedCommand\AnnotationData  $annotationData
+     */
+    public function initCommands(InputInterface $input, AnnotationData $annotationData)
+    {
+        $this->projectDirectory = $input->getOption('project-directory') ?: Drush::bootstrapManager()->getComposerRoot();
+    }
+
+    /**
+     * Define default options for most backend commands.
+     *
+     * @hook option @options-backend
+     *
+     * @option project-directory The base directory of the project. Defaults to composer root of project.
+     *
+     * @param array $options
+     */
+    public function optionsBackend(Command $command, AnnotationData $annotationData)
+    {
+        $command->addOption(
+            'project-directory',
+            '',
+            InputOption::VALUE_NONE,
+            'The base directory of the project. Defaults to composer root of project. Option added by burdastyle backend commands.'
+        );
+    }
+
+    /**
      * Prepare file system and code to be ready for install.
      *
      * @hook pre-command backend:install
@@ -127,12 +157,12 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     /**
      * Add option to command.
      *
-     * @hook option backend:create-testing-dump backend:install config:export config:import
+     * @hook option config:export
      *
      * @param \Symfony\Component\Console\Command\Command     $command
      * @param \Consolidation\AnnotatedCommand\AnnotationData $annotationData
      */
-    public function additionalBackendOptions(Command $command, AnnotationData $annotationData)
+    public function additionalConfigExportOptions(Command $command, AnnotationData $annotationData)
     {
         $command->addOption(
             'project-directory',
@@ -143,12 +173,41 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     }
 
     /**
-     * @hook init backend:create-testing-dump backend:install config:export config:import
+     * @hook init config:export
      *
      * @param \Symfony\Component\Console\Input\InputInterface $input
      * @param \Consolidation\AnnotatedCommand\AnnotationData  $annotationData
      */
-    public function initBackendCommands(InputInterface $input, AnnotationData $annotationData)
+    public function initConfigExportCommands(InputInterface $input, AnnotationData $annotationData)
+    {
+        $this->initCommands($input, $annotationData);
+    }
+
+    /**
+     * Add option to command.
+     *
+     * @hook option config:import
+     *
+     * @param \Symfony\Component\Console\Command\Command     $command
+     * @param \Consolidation\AnnotatedCommand\AnnotationData $annotationData
+     */
+    public function additionalConfigImportOptions(Command $command, AnnotationData $annotationData)
+    {
+        $command->addOption(
+            'project-directory',
+            '',
+            InputOption::VALUE_NONE,
+            'The base directory of the project. Defaults to composer root of project. Option added by burdastyle backend commands.'
+        );
+    }
+
+    /**
+     * @hook init config:import
+     *
+     * @param \Symfony\Component\Console\Input\InputInterface $input
+     * @param \Consolidation\AnnotatedCommand\AnnotationData  $annotationData
+     */
+    public function initConfigImportCommands(InputInterface $input, AnnotationData $annotationData)
     {
         $this->initCommands($input, $annotationData);
     }

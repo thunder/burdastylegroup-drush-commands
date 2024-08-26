@@ -7,7 +7,9 @@ use Consolidation\SiteAlias\SiteAliasInterface;
 use Consolidation\SiteAlias\SiteAliasManagerAwareTrait;
 use Drupal\Core\Site\Settings;
 use Drush\Drush;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Filesystem\Path;
 
 /**
@@ -35,18 +37,6 @@ trait BackendCommandsTrait
      * @var string
      */
     private $projectDirectory;
-
-    /**
-     * Init params.
-     *
-     * @param \Symfony\Component\Console\Input\InputInterface $input
-     * @param \Consolidation\AnnotatedCommand\AnnotationData  $annotationData
-     */
-    public function initCommands(InputInterface $input, AnnotationData $annotationData)
-    {
-        // Initialize project directory.
-        $this->projectDirectory = $input->getOption('project-directory') ?: Drush::bootstrapManager()->getComposerRoot();
-    }
 
     /**
      * Drush command wrapper.
