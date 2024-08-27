@@ -41,8 +41,8 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     /**
      * @hook init @options-backend
      *
-     * @param \Symfony\Component\Console\Input\InputInterface $input
-     * @param \Consolidation\AnnotatedCommand\AnnotationData  $annotationData
+     * @param \Symfony\Component\Console\Input\InputInterface     $input
+     * @param \Consolidation\AnnotatedCommand\AnnotationData     $annotationData
      */
     public function initCommands(InputInterface $input, AnnotationData $annotationData)
     {
@@ -355,7 +355,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
 
         $defaultSettingsFile = $this->drupalRootDirectory().'/sites/default/settings.php';
         if (!file_exists($defaultSettingsFile)) {
-          $fileString = <<<EOF
+            $fileString = <<<EOF
 <?php
 \$databases['default']['default'] = [
   'database' => '{{ database }}',
