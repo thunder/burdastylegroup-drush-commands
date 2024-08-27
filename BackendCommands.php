@@ -42,7 +42,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      * @hook init @options-backend
      *
      * @param \Symfony\Component\Console\Input\InputInterface $input
-     * @param \Consolidation\AnnotatedCommand\AnnotationData $annotationData
+     * @param \Consolidation\AnnotatedCommand\AnnotationData  $annotationData
      */
     public function initCommands(InputInterface $input, AnnotationData $annotationData)
     {
