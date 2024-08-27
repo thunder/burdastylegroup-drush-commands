@@ -352,7 +352,32 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         $dbSpec = $sql->getDbSpec();
         $dbUrl = $dbSpec['driver'].'://'.$dbSpec['username'].':'.$dbSpec['password'].'@'.$dbSpec['host'].':'.$dbSpec['port'].'/'.$dbSpec['database'];
 
+        $default_settings_file = $this->drupalRootDirectory() . '/sites/default/settings.php';
+        if (!file_exists($default_settings_file)) {
+            $file_string = <<<EOF
+<?php
+\$databases['default']['default'] = [
+  'database' => '{{ database }}',
+  'username' => '{{ username }}',
+  'password' => '{{ password }}',
+  'prefix' => '',
+  'host' => '{{ host }}',
+  'port' => '{{ port }}',
+  'namespace' => 'Drupal\\Core\\Database\\Driver\\mysql',
+  'driver' => '{{ driver }}',
+];
+EOF;
+            $file_string = str_replace(['{{ database }}', '{{ username }}', '{{ password }}', '{{ host }}', '{{ port }}', '{{ driver }}'], [$dbSpec['database'], $dbSpec['username'], $dbSpec['password'], $dbSpec['host'], $dbSpec['port'], $dbSpec['driver']], $file_string);
+
+            $default_settings_file_created =
+              file_put_contents($default_settings_file, $file_string);
+        }
+
         $this->process(['php', 'core/scripts/db-tools.php', 'dump-database-d8-mysql', '--database-url', $dbUrl], $this->drupalRootDirectory());
+
+        if (!empty($default_settings_file_created)) {
+            unlink($default_settings_file);
+        }
     }
 
     /**
