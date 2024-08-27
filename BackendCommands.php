@@ -41,8 +41,8 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     /**
      * @hook init @options-backend
      *
-     * @param \Symfony\Component\Console\Input\InputInterface     $input
-     * @param \Consolidation\AnnotatedCommand\AnnotationData     $annotationData
+     * @param \Symfony\Component\Console\Input\InputInterface $input
+     * @param \Consolidation\AnnotatedCommand\AnnotationData $annotationData
      */
     public function initCommands(InputInterface $input, AnnotationData $annotationData)
     {
@@ -56,7 +56,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      *
      * @option project-directory The base directory of the project. Defaults to composer root of project.
      *
-     * @param \Symfony\Component\Console\Command\Command $command
+     * @param \Symfony\Component\Console\Command\Command     $command
      * @param \Consolidation\AnnotatedCommand\AnnotationData $annotationData
      */
     public function optionsBackend(Command $command, AnnotationData $annotationData)
