@@ -353,31 +353,18 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         $dbSpec = $sql->getDbSpec();
         $dbUrl = $dbSpec['driver'].'://'.$dbSpec['username'].':'.$dbSpec['password'].'@'.$dbSpec['host'].':'.$dbSpec['port'].'/'.$dbSpec['database'];
 
+        // Prepare settings file.
         $defaultSettingsFile = $this->drupalRootDirectory().'/sites/default/settings.php';
-        if (!file_exists($defaultSettingsFile)) {
-            $fileString = <<<EOF
-<?php
-\$databases['default']['default'] = [
-  'database' => '{{ database }}',
-  'username' => '{{ username }}',
-  'password' => '{{ password }}',
-  'prefix' => '',
-  'host' => '{{ host }}',
-  'port' => '{{ port }}',
-  'namespace' => 'Drupal\\Core\\Database\\Driver\\mysql',
-  'driver' => '{{ driver }}',
-];
-EOF;
-            $fileString = str_replace(['{{ database }}', '{{ username }}', '{{ password }}', '{{ host }}', '{{ port }}', '{{ driver }}'], [$dbSpec['database'], $dbSpec['username'], $dbSpec['password'], $dbSpec['host'], $dbSpec['port'], $dbSpec['driver']], $fileString);
-
-            $defaultSettingsFileCreated =
-              file_put_contents($defaultSettingsFile, $fileString);
+        if (file_exists($defaultSettingsFile)) {
+            $tmpName = tempnam( $this->drupalRootDirectory().'/sites/default/', 'settings.tmp');
+            rename($defaultSettingsFile, $tmpName);
         }
+        $this->prepareSettingsFile($defaultSettingsFile, $dbSpec);
 
         $this->process(['php', 'core/scripts/db-tools.php', 'dump-database-d8-mysql', '--database-url', $dbUrl], $this->drupalRootDirectory());
 
-        if (!empty($defaultSettingsFileCreated)) {
-            unlink($defaultSettingsFile);
+        if (!empty($tmpName)) {
+            rename($tmpName, $defaultSettingsFile);
         }
     }
 
@@ -499,5 +486,32 @@ EOF;
         fclose($secondFileHandler);
 
         return true;
+    }
+
+    /**
+     * Generates default settings file with current db params.
+     *
+     * @param $defaultSettingsFile
+     * @param $dbSpec
+     * @return void
+     */
+    private function prepareSettingsFile($defaultSettingsFile, $dbSpec) {
+
+        $fileString = <<<EOF
+<?php
+\$databases['default']['default'] = [
+  'database' => '{{ database }}',
+  'username' => '{{ username }}',
+  'password' => '{{ password }}',
+  'prefix' => '',
+  'host' => '{{ host }}',
+  'port' => '{{ port }}',
+  'namespace' => 'Drupal\\Core\\Database\\Driver\\mysql',
+  'driver' => '{{ driver }}',
+];
+EOF;
+        $fileString = str_replace(['{{ database }}', '{{ username }}', '{{ password }}', '{{ host }}', '{{ port }}', '{{ driver }}'], [$dbSpec['database'], $dbSpec['username'], $dbSpec['password'], $dbSpec['host'], $dbSpec['port'], $dbSpec['driver']], $fileString);
+        file_put_contents($defaultSettingsFile, $fileString, FILE_APPEND);
+
     }
 }
