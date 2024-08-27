@@ -56,7 +56,8 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      *
      * @option project-directory The base directory of the project. Defaults to composer root of project.
      *
-     * @param array $options
+     * @param \Symfony\Component\Console\Command\Command $command
+     * @param \Consolidation\AnnotatedCommand\AnnotationData $annotationData
      */
     public function optionsBackend(Command $command, AnnotationData $annotationData)
     {
@@ -352,9 +353,9 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         $dbSpec = $sql->getDbSpec();
         $dbUrl = $dbSpec['driver'].'://'.$dbSpec['username'].':'.$dbSpec['password'].'@'.$dbSpec['host'].':'.$dbSpec['port'].'/'.$dbSpec['database'];
 
-        $default_settings_file = $this->drupalRootDirectory() . '/sites/default/settings.php';
-        if (!file_exists($default_settings_file)) {
-            $file_string = <<<EOF
+        $defaultSettingsFile = $this->drupalRootDirectory().'/sites/default/settings.php';
+        if (!file_exists($defaultSettingsFile)) {
+          $fileString = <<<EOF
 <?php
 \$databases['default']['default'] = [
   'database' => '{{ database }}',
@@ -367,16 +368,16 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
   'driver' => '{{ driver }}',
 ];
 EOF;
-            $file_string = str_replace(['{{ database }}', '{{ username }}', '{{ password }}', '{{ host }}', '{{ port }}', '{{ driver }}'], [$dbSpec['database'], $dbSpec['username'], $dbSpec['password'], $dbSpec['host'], $dbSpec['port'], $dbSpec['driver']], $file_string);
+            $fileString = str_replace(['{{ database }}', '{{ username }}', '{{ password }}', '{{ host }}', '{{ port }}', '{{ driver }}'], [$dbSpec['database'], $dbSpec['username'], $dbSpec['password'], $dbSpec['host'], $dbSpec['port'], $dbSpec['driver']], $fileString);
 
-            $default_settings_file_created =
-              file_put_contents($default_settings_file, $file_string);
+            $defaultSettingsFileCreated =
+              file_put_contents($defaultSettingsFile, $fileString);
         }
 
         $this->process(['php', 'core/scripts/db-tools.php', 'dump-database-d8-mysql', '--database-url', $dbUrl], $this->drupalRootDirectory());
 
-        if (!empty($default_settings_file_created)) {
-            unlink($default_settings_file);
+        if (!empty($defaultSettingsFileCreated)) {
+            unlink($defaultSettingsFile);
         }
     }
 
