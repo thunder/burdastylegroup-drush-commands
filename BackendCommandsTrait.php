@@ -3,13 +3,14 @@
 namespace Drush\Commands\BurdaStyleGroup;
 
 use Consolidation\AnnotatedCommand\AnnotationData;
-use Consolidation\AnnotatedCommand\CommandError;
 use Consolidation\SiteAlias\SiteAliasInterface;
 use Consolidation\SiteAlias\SiteAliasManagerAwareTrait;
 use Drupal\Core\Site\Settings;
 use Drush\Drush;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
-use Webmozart\PathUtil\Path;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Filesystem\Path;
 
 /**
  * Trait for backend drush commands.
@@ -26,6 +27,7 @@ trait BackendCommandsTrait
     private $siteDomainDirectoryMapping = [
         '@elle.dev' => 'elle.de',
         '@esquire.dev' => 'esquire.de',
+        '@focusplus.dev' => 'focusplus.de',
         '@freundin.dev' => 'freundin.de',
         '@harpersbazaar.dev' => 'harpersbazaar.de',
         '@instyle.dev' => 'instyle.de',
@@ -35,31 +37,6 @@ trait BackendCommandsTrait
      * @var string
      */
     private $projectDirectory;
-
-    /**
-     * @hook init
-     *
-     * @param \Symfony\Component\Console\Input\InputInterface $input
-     * @param \Consolidation\AnnotatedCommand\AnnotationData  $annotationData
-     */
-    public function initCommands(InputInterface $input, AnnotationData $annotationData)
-    {
-        // Initialize project directory.
-        $this->projectDirectory = $input->getOption('project-directory') ?: Drush::bootstrapManager()->getComposerRoot();
-    }
-
-    /**
-     * Define default options for most backend commands.
-     *
-     * @hook option @options-backend
-     *
-     * @option project-directory The base directory of the project. Defaults to composer root of project.
-     *
-     * @param array $options
-     */
-    public function optionsBackend($options = ['project-directory' => false])
-    {
-    }
 
     /**
      * Drush command wrapper.

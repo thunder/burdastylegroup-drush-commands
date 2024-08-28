@@ -39,6 +39,37 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     }
 
     /**
+     * @hook init @options-backend
+     *
+     * @param \Symfony\Component\Console\Input\InputInterface $input
+     * @param \Consolidation\AnnotatedCommand\AnnotationData  $annotationData
+     */
+    public function initCommands(InputInterface $input, AnnotationData $annotationData)
+    {
+        $this->projectDirectory = $input->getOption('project-directory') ?: Drush::bootstrapManager()->getComposerRoot();
+    }
+
+    /**
+     * Define default options for most backend commands.
+     *
+     * @hook option @options-backend
+     *
+     * @option project-directory The base directory of the project. Defaults to composer root of project.
+     *
+     * @param \Symfony\Component\Console\Command\Command     $command
+     * @param \Consolidation\AnnotatedCommand\AnnotationData $annotationData
+     */
+    public function optionsBackend(Command $command, AnnotationData $annotationData)
+    {
+        $command->addOption(
+            'project-directory',
+            '',
+            InputOption::VALUE_NONE,
+            'The base directory of the project. Defaults to composer root of project. Option added by burdastyle backend commands.'
+        );
+    }
+
+    /**
      * Prepare file system and code to be ready for install.
      *
      * @hook pre-command backend:install
@@ -48,9 +79,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     public function preInstallCommand(CommandData $commandData)
     {
         $this->populateConfigSyncDirectory();
-
-        // Apply core patches
-        $this->corePatches();
     }
 
     /**
@@ -71,12 +99,11 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      */
     public function install()
     {
-        // Cleanup existing installation.
-        $this->drush($this->selfRecord(), 'sql-create', [], ['yes' => $this->input()->getOption('yes')]);
-        $this->drush($this->selfRecord(), 'cache:rebuild');
-
-        // Do the site install
+        // Do the site install.
         $this->drush($this->selfRecord(), 'site:install', [], ['existing-config' => true, 'yes' => $this->input()->getOption('yes')]);
+
+        // Clear caches.
+        $this->drush($this->selfRecord(), 'cache:rebuild');
     }
 
     /**
@@ -89,8 +116,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      */
     public function postInstallCommand($result, CommandData $commandData)
     {
-        // Remove the patch.
-        $this->corePatches($revert = true);
         $this->process(['git', 'checkout', $this->siteDirectory().'/settings.php'], $this->projectDirectory());
     }
 
@@ -137,7 +162,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      * @param \Symfony\Component\Console\Command\Command     $command
      * @param \Consolidation\AnnotatedCommand\AnnotationData $annotationData
      */
-    public function additionalConfigExportOption(Command $command, AnnotationData $annotationData)
+    public function additionalConfigExportOptions(Command $command, AnnotationData $annotationData)
     {
         $command->addOption(
             'project-directory',
@@ -153,7 +178,36 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      * @param \Symfony\Component\Console\Input\InputInterface $input
      * @param \Consolidation\AnnotatedCommand\AnnotationData  $annotationData
      */
-    public function initConfigExportCommand(InputInterface $input, AnnotationData $annotationData)
+    public function initConfigExportCommands(InputInterface $input, AnnotationData $annotationData)
+    {
+        $this->initCommands($input, $annotationData);
+    }
+
+    /**
+     * Add option to command.
+     *
+     * @hook option config:import
+     *
+     * @param \Symfony\Component\Console\Command\Command     $command
+     * @param \Consolidation\AnnotatedCommand\AnnotationData $annotationData
+     */
+    public function additionalConfigImportOptions(Command $command, AnnotationData $annotationData)
+    {
+        $command->addOption(
+            'project-directory',
+            '',
+            InputOption::VALUE_NONE,
+            'The base directory of the project. Defaults to composer root of project. Option added by burdastyle backend commands.'
+        );
+    }
+
+    /**
+     * @hook init config:import
+     *
+     * @param \Symfony\Component\Console\Input\InputInterface $input
+     * @param \Consolidation\AnnotatedCommand\AnnotationData  $annotationData
+     */
+    public function initConfigImportCommands(InputInterface $input, AnnotationData $annotationData)
     {
         $this->initCommands($input, $annotationData);
     }
@@ -239,36 +293,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     }
 
     /**
-     * Add option to command.
-     *
-     * @hook option config:import
-     *
-     * @param \Symfony\Component\Console\Command\Command     $command
-     * @param \Consolidation\AnnotatedCommand\AnnotationData $annotationData
-     */
-    public function additionalConfigImportOption(Command $command, AnnotationData $annotationData)
-    {
-        $command->addOption(
-            'project-directory',
-            '',
-            InputOption::VALUE_NONE,
-            'The base directory of the project. Defaults to composer root of project. Option added by burdastyle backend commands.'
-        );
-    }
-
-    /**
-     * @hook init config:import
-     *
-     * @param \Symfony\Component\Console\Input\InputInterface $input
-     * @param \Consolidation\AnnotatedCommand\AnnotationData  $annotationData
-     */
-    public function initConfigImportCommand(InputInterface $input, AnnotationData $annotationData)
-    {
-        $this->initCommands($input, $annotationData);
-    }
-
-
-    /**
      * Prepare an update branch. Does code update, database update and config export.
      *
      * @command backend:prepare-update-branch
@@ -327,9 +351,23 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     {
         $sql = SqlBase::create();
         $dbSpec = $sql->getDbSpec();
-        $dbUrl = $dbSpec['driver'].'://'.$dbSpec['username'].':'.$dbSpec['password'].'@'.$dbSpec['host'].':'.$dbSpec['port'].'/'.$dbSpec['database'];
 
-        $this->process(['php', 'core/scripts/db-tools.php', 'dump-database-d8-mysql', '--database-url', $dbUrl], $this->drupalRootDirectory());
+        // Prepare settings file.
+        $defaultSettingsFile = $this->drupalRootDirectory().'/sites/default/settings.php';
+        if (file_exists($defaultSettingsFile)) {
+            $tmpName = tempnam($this->drupalRootDirectory().'/sites/default/', 'settings.tmp');
+            rename($defaultSettingsFile, $tmpName);
+        }
+        $this->prepareSettingsFile($defaultSettingsFile, $dbSpec);
+
+        $this->process(['php', 'core/scripts/db-tools.php', 'dump-database-d8-mysql'], $this->drupalRootDirectory());
+
+        // Cleanup settings file.
+        if (!empty($tmpName)) {
+            rename($tmpName, $defaultSettingsFile);
+        } else {
+            unlink($defaultSettingsFile);
+        }
     }
 
     /**
@@ -397,35 +435,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     }
 
     /**
-     * Apply or revoke patches to drupal core.
-     *
-     * @param bool $revert
-     */
-    protected function corePatches(bool $revert = false)
-    {
-        $patches = [
-            'https://www.drupal.org/files/issues/2020-09-14/3169756-2-11.patch',
-            'https://www.drupal.org/files/issues/2020-06-03/2488350-3-98.patch',
-        ];
-
-        $command = ['patch', '-p1', '--silent'];
-        if ($revert) {
-            $command[] = '-R';
-            $patches = array_reverse($patches);
-        }
-
-        foreach ($patches as $patch) {
-            $stream = fopen($patch, 'r');
-            try {
-                $this->process($command, $this->drupalRootDirectory(), null, $stream);
-            } catch (\Exception $e) {
-                $this->logger()->info('A patch was not applied correctly, continuing without this patch.');
-            }
-            fclose($stream);
-        }
-    }
-
-    /**
      * Get all config files in a given directory.
      *
      * @param $directory
@@ -479,5 +488,33 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         fclose($secondFileHandler);
 
         return true;
+    }
+
+    /**
+     * Generates default settings file with current db params.
+     *
+     * @param $defaultSettingsFile
+     * @param $dbSpec
+     *
+     * @return void
+     */
+    private function prepareSettingsFile($defaultSettingsFile, $dbSpec)
+    {
+
+        $fileString = <<<EOF
+<?php
+\$databases['default']['default'] = [
+  'database' => '{{ database }}',
+  'username' => '{{ username }}',
+  'password' => '{{ password }}',
+  'prefix' => '',
+  'host' => '{{ host }}',
+  'port' => '{{ port }}',
+  'namespace' => 'Drupal\\Core\\Database\\Driver\\mysql',
+  'driver' => '{{ driver }}',
+];
+EOF;
+        $fileString = str_replace(['{{ database }}', '{{ username }}', '{{ password }}', '{{ host }}', '{{ port }}', '{{ driver }}'], [$dbSpec['database'], $dbSpec['username'], $dbSpec['password'], $dbSpec['host'], $dbSpec['port'], $dbSpec['driver']], $fileString);
+        file_put_contents($defaultSettingsFile, $fileString, FILE_APPEND);
     }
 }
