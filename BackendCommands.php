@@ -356,7 +356,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         // Prepare settings file.
         $defaultSettingsFile = $this->drupalRootDirectory().'/sites/default/settings.php';
         if (file_exists($defaultSettingsFile)) {
-            $tmpName = tempnam( $this->drupalRootDirectory().'/sites/default/', 'settings.tmp');
+            $tmpName = tempnam($this->drupalRootDirectory().'/sites/default/', 'settings.tmp');
             rename($defaultSettingsFile, $tmpName);
         }
         $this->prepareSettingsFile($defaultSettingsFile, $dbSpec);
@@ -493,9 +493,11 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
      *
      * @param $defaultSettingsFile
      * @param $dbSpec
+     *
      * @return void
      */
-    private function prepareSettingsFile($defaultSettingsFile, $dbSpec) {
+    private function prepareSettingsFile($defaultSettingsFile, $dbSpec)
+    {
 
         $fileString = <<<EOF
 <?php
@@ -512,6 +514,5 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
 EOF;
         $fileString = str_replace(['{{ database }}', '{{ username }}', '{{ password }}', '{{ host }}', '{{ port }}', '{{ driver }}'], [$dbSpec['database'], $dbSpec['username'], $dbSpec['password'], $dbSpec['host'], $dbSpec['port'], $dbSpec['driver']], $fileString);
         file_put_contents($defaultSettingsFile, $fileString, FILE_APPEND);
-
     }
 }
