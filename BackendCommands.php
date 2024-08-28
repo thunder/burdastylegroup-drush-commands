@@ -365,8 +365,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         // Cleanup settings file.
         if (!empty($tmpName)) {
             rename($tmpName, $defaultSettingsFile);
-        }
-        else {
+        } else {
             unlink($defaultSettingsFile);
         }
     }
