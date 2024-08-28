@@ -362,8 +362,12 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
 
         $this->process(['php', 'core/scripts/db-tools.php', 'dump-database-d8-mysql'], $this->drupalRootDirectory());
 
+        // Cleanup settings file.
         if (!empty($tmpName)) {
             rename($tmpName, $defaultSettingsFile);
+        }
+        else {
+            unlink($defaultSettingsFile);
         }
     }
 
