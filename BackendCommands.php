@@ -351,7 +351,6 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
     {
         $sql = SqlBase::create();
         $dbSpec = $sql->getDbSpec();
-        $dbUrl = $dbSpec['driver'].'://'.$dbSpec['username'].':'.$dbSpec['password'].'@'.$dbSpec['host'].':'.$dbSpec['port'].'/'.$dbSpec['database'];
 
         // Prepare settings file.
         $defaultSettingsFile = $this->drupalRootDirectory().'/sites/default/settings.php';
@@ -361,7 +360,7 @@ class BackendCommands extends DrushCommands implements SiteAliasManagerAwareInte
         }
         $this->prepareSettingsFile($defaultSettingsFile, $dbSpec);
 
-        $this->process(['php', 'core/scripts/db-tools.php', 'dump-database-d8-mysql', '--database-url', $dbUrl], $this->drupalRootDirectory());
+        $this->process(['php', 'core/scripts/db-tools.php', 'dump-database-d8-mysql'], $this->drupalRootDirectory());
 
         if (!empty($tmpName)) {
             rename($tmpName, $defaultSettingsFile);
