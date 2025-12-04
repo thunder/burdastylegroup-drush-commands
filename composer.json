@@ -3,7 +3,7 @@
   "description": "Drush commands for the BurdaStyleGrout Thunder installation.",
   "type": "drupal-drush",
   "require": {
-    "drush/drush": "~11 || ~12"
+    "drush/drush": "~12 || ~13"
   },
   "license": "GPL-2.0-or-later",
   "authors": [
